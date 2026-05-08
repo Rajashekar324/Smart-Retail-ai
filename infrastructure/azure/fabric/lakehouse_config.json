@@ -1,0 +1,374 @@
+{
+  "name": "SmartRetail_Lakehouse",
+  "description": "Microsoft Fabric Lakehouse for Smart Retail AI Store analytics",
+  "workspace": "Smart Retail Analytics",
+  "configuration": {
+    "enable_schema_enforcement": true,
+    "enable_v_order": true,
+    "default_file_format": "delta",
+    "compatibility_level": "spark_3_4"
+  },
+  "schemas": [
+    {
+      "name": "raw",
+      "description": "Bronze layer - raw ingested data",
+      "tables": [
+        {
+          "name": "users",
+          "format": "delta",
+          "partitioning": ["created_at"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "name", "type": "string", "nullable": false},
+            {"name": "email", "type": "string", "nullable": false},
+            {"name": "is_admin", "type": "boolean", "nullable": false},
+            {"name": "created_at", "type": "date", "nullable": false},
+            {"name": "_ingestion_timestamp", "type": "timestamp", "nullable": false}
+          ]
+        },
+        {
+          "name": "products",
+          "format": "delta",
+          "partitioning": ["category"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "sku", "type": "string", "nullable": false},
+            {"name": "name", "type": "string", "nullable": false},
+            {"name": "category", "type": "string", "nullable": false},
+            {"name": "price", "type": "decimal(10,2)", "nullable": false},
+            {"name": "stock", "type": "int", "nullable": false},
+            {"name": "created_at", "type": "date", "nullable": false}
+          ]
+        },
+        {
+          "name": "orders",
+          "format": "delta",
+          "partitioning": ["created_at"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "order_number", "type": "string", "nullable": false},
+            {"name": "user_id", "type": "bigint", "nullable": false},
+            {"name": "total_amount", "type": "decimal(10,2)", "nullable": false},
+            {"name": "status", "type": "string", "nullable": false},
+            {"name": "payment_method", "type": "string", "nullable": false},
+            {"name": "created_at", "type": "date", "nullable": false}
+          ]
+        },
+        {
+          "name": "order_items",
+          "format": "delta",
+          "partitioning": [],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "order_id", "type": "bigint", "nullable": false},
+            {"name": "product_id", "type": "bigint", "nullable": false},
+            {"name": "quantity", "type": "int", "nullable": false},
+            {"name": "unit_price", "type": "decimal(10,2)", "nullable": false}
+          ]
+        },
+        {
+          "name": "support_tickets",
+          "format": "delta",
+          "partitioning": ["created_at"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "ticket_number", "type": "string", "nullable": false},
+            {"name": "customer_email", "type": "string", "nullable": false},
+            {"name": "subject", "type": "string", "nullable": false},
+            {"name": "status", "type": "string", "nullable": false},
+            {"name": "priority", "type": "string", "nullable": false},
+            {"name": "sentiment", "type": "string", "nullable": false},
+            {"name": "created_at", "type": "date", "nullable": false}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "staging",
+      "description": "Silver layer - cleaned and transformed data",
+      "tables": [
+        {
+          "name": "dim_customers",
+          "format": "delta",
+          "type": "dimension_scd2",
+          "partitioning": ["customer_segment"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "name", "type": "string", "nullable": false},
+            {"name": "email", "type": "string", "nullable": false},
+            {"name": "total_orders", "type": "bigint"},
+            {"name": "total_spent", "type": "decimal(12,2)"},
+            {"name": "avg_order_value", "type": "decimal(10,2)"},
+            {"name": "customer_segment", "type": "string"},
+            {"name": "effective_date", "type": "date", "nullable": false},
+            {"name": "expiration_date", "type": "date", "nullable": false},
+            {"name": "is_current", "type": "boolean", "nullable": false}
+          ]
+        },
+        {
+          "name": "dim_products",
+          "format": "delta",
+          "type": "dimension_scd2",
+          "partitioning": ["category"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "sku", "type": "string", "nullable": false},
+            {"name": "name", "type": "string", "nullable": false},
+            {"name": "category", "type": "string", "nullable": false},
+            {"name": "price", "type": "decimal(10,2)"},
+            {"name": "stock", "type": "int"},
+            {"name": "total_sold", "type": "bigint"},
+            {"name": "stock_status", "type": "string"},
+            {"name": "effective_date", "type": "date", "nullable": false},
+            {"name": "is_current", "type": "boolean", "nullable": false}
+          ]
+        },
+        {
+          "name": "fact_orders",
+          "format": "delta",
+          "type": "fact",
+          "partitioning": ["order_year", "order_month"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "order_number", "type": "string", "nullable": false},
+            {"name": "user_id", "type": "bigint", "nullable": false},
+            {"name": "total_amount", "type": "decimal(10,2)"},
+            {"name": "status", "type": "string"},
+            {"name": "total_items", "type": "bigint"},
+            {"name": "order_year", "type": "int"},
+            {"name": "order_month", "type": "int"},
+            {"name": "is_weekend", "type": "boolean"}
+          ]
+        },
+        {
+          "name": "fact_order_items",
+          "format": "delta",
+          "type": "fact",
+          "partitioning": ["created_at"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "order_id", "type": "bigint", "nullable": false},
+            {"name": "product_id", "type": "bigint", "nullable": false},
+            {"name": "category", "type": "string"},
+            {"name": "quantity", "type": "int"},
+            {"name": "unit_price", "type": "decimal(10,2)"},
+            {"name": "line_revenue", "type": "decimal(10,2)"},
+            {"name": "line_profit", "type": "decimal(10,2)"},
+            {"name": "profit_margin", "type": "decimal(5,2)"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "curated",
+      "description": "Gold layer - analytics-ready aggregations",
+      "tables": [
+        {
+          "name": "sales_daily",
+          "format": "delta",
+          "type": "aggregate",
+          "partitioning": ["year", "month"],
+          "columns": [
+            {"name": "created_at", "type": "date", "nullable": false},
+            {"name": "total_orders", "type": "bigint"},
+            {"name": "total_revenue", "type": "decimal(12,2)"},
+            {"name": "avg_order_value", "type": "decimal(10,2)"},
+            {"name": "unique_customers", "type": "bigint"},
+            {"name": "cancellation_rate", "type": "decimal(5,2)"},
+            {"name": "total_profit", "type": "decimal(12,2)"},
+            {"name": "year", "type": "int"},
+            {"name": "month", "type": "int"},
+            {"name": "is_weekend", "type": "boolean"}
+          ]
+        },
+        {
+          "name": "customer_360",
+          "format": "delta",
+          "type": "enrichment",
+          "partitioning": ["rfm_segment"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "name", "type": "string"},
+            {"name": "email", "type": "string"},
+            {"name": "total_orders", "type": "bigint"},
+            {"name": "total_spent", "type": "decimal(12,2)"},
+            {"name": "customer_segment", "type": "string"},
+            {"name": "recency", "type": "int"},
+            {"name": "frequency", "type": "bigint"},
+            {"name": "monetary", "type": "decimal(12,2)"},
+            {"name": "rfm_score", "type": "string"},
+            {"name": "rfm_segment", "type": "string"},
+            {"name": "churn_risk_score", "type": "double"},
+            {"name": "churn_risk_segment", "type": "string"}
+          ]
+        },
+        {
+          "name": "inventory_analytics",
+          "format": "delta",
+          "type": "enrichment",
+          "partitioning": ["category", "stock_status"],
+          "columns": [
+            {"name": "id", "type": "bigint", "nullable": false},
+            {"name": "sku", "type": "string"},
+            {"name": "name", "type": "string"},
+            {"name": "category", "type": "string"},
+            {"name": "stock", "type": "int"},
+            {"name": "stock_status", "type": "string"},
+            {"name": "daily_velocity", "type": "double"},
+            {"name": "days_of_inventory", "type": "double"},
+            {"name": "abc_classification", "type": "string"},
+            {"name": "reorder_recommended", "type": "boolean"},
+            {"name": "suggested_reorder_qty", "type": "int"}
+          ]
+        },
+        {
+          "name": "anomaly_features",
+          "format": "delta",
+          "type": "ml_feature",
+          "partitioning": ["year", "month"],
+          "columns": [
+            {"name": "created_at", "type": "date", "nullable": false},
+            {"name": "total_revenue", "type": "decimal(12,2)"},
+            {"name": "total_orders", "type": "bigint"},
+            {"name": "revenue_zscore", "type": "double"},
+            {"name": "orders_zscore", "type": "double"},
+            {"name": "is_revenue_anomaly", "type": "boolean"},
+            {"name": "is_orders_anomaly", "type": "boolean"},
+            {"name": "is_any_anomaly", "type": "boolean"},
+            {"name": "revenue_change_pct", "type": "double"}
+          ]
+        }
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "SmartRetail_Ingestion_Pipeline",
+      "type": "data_pipeline",
+      "source": "SQLite_API",
+      "destination": "raw",
+      "schedule": {
+        "frequency": "hour",
+        "interval": 1
+      },
+      "activities": [
+        {
+          "name": "Ingest_Users",
+          "type": "copy",
+          "source": "api/users",
+          "destination": "raw.users"
+        },
+        {
+          "name": "Ingest_Products",
+          "type": "copy",
+          "source": "api/products",
+          "destination": "raw.products"
+        },
+        {
+          "name": "Ingest_Orders",
+          "type": "copy",
+          "source": "api/orders",
+          "destination": "raw.orders"
+        },
+        {
+          "name": "Ingest_Tickets",
+          "type": "copy",
+          "source": "api/tickets",
+          "destination": "raw.support_tickets"
+        }
+      ]
+    },
+    {
+      "name": "SmartRetail_Transformation_Pipeline",
+      "type": "notebook_pipeline",
+      "schedule": {
+        "frequency": "hour",
+        "interval": 1
+      },
+      "dependencies": ["SmartRetail_Ingestion_Pipeline"],
+      "notebooks": [
+        "/Workspace/SmartRetail/transform_customers_dim",
+        "/Workspace/SmartRetail/transform_products_dim",
+        "/Workspace/SmartRetail/transform_orders_fact",
+        "/Workspace/SmartRetail/data_quality_checks"
+      ]
+    },
+    {
+      "name": "SmartRetail_Curation_Pipeline",
+      "type": "notebook_pipeline",
+      "schedule": {
+        "frequency": "hour",
+        "interval": 2
+      },
+      "dependencies": ["SmartRetail_Transformation_Pipeline"],
+      "notebooks": [
+        "/Workspace/SmartRetail/curate_sales_summary",
+        "/Workspace/SmartRetail/curate_customer_360",
+        "/Workspace/SmartRetail/curate_inventory_analytics",
+        "/Workspace/SmartRetail/curate_anomaly_features"
+      ]
+    }
+  ],
+  "dataflows": [
+    {
+      "name": "Sales_Dataflow",
+      "description": "Power BI optimized sales data",
+      "query": "SELECT * FROM curated.sales_daily WHERE created_at >= dateadd(day, -90, current_date())",
+      "destination": "powerbi://smartretail/sales"
+    },
+    {
+      "name": "Customer_Dataflow",
+      "description": "Customer analytics for Power BI",
+      "query": "SELECT * FROM curated.customer_360",
+      "destination": "powerbi://smartretail/customers"
+    },
+    {
+      "name": "Inventory_Dataflow",
+      "description": "Inventory status for alerts",
+      "query": "SELECT * FROM curated.inventory_analytics WHERE reorder_recommended = true",
+      "destination": "dataactivator://smartretail/inventory_alerts"
+    }
+  ],
+  "data_activator": {
+    "enabled": true,
+    "alerts": [
+      {
+        "name": "Low_Stock_Alert",
+        "condition": "stock < 10",
+        "severity": "high",
+        "notify": ["inventory@smartretail.com"],
+        "table": "curated.inventory_analytics"
+      },
+      {
+        "name": "Revenue_Anomaly_Alert",
+        "condition": "abs(revenue_zscore) > 2.5",
+        "severity": "medium",
+        "notify": ["analytics@smartretail.com"],
+        "table": "curated.anomaly_features"
+      },
+      {
+        "name": "High_Value_Customer_Churn",
+        "condition": "rfm_segment = 'Champions' AND recency > 30",
+        "severity": "high",
+        "notify": ["crm@smartretail.com"],
+        "table": "curated.customer_360"
+      }
+    ]
+  },
+  "ml_endpoints": [
+    {
+      "name": "churn_prediction",
+      "type": "realtime",
+      "model": "customer_churn_model",
+      "input_schema": "curated.customer_360",
+      "output_column": "predicted_churn_probability"
+    },
+    {
+      "name": "anomaly_detection",
+      "type": "batch",
+      "model": "sales_anomaly_model",
+      "input_schema": "curated.anomaly_features",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

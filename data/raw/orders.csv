@@ -1,0 +1,20 @@
+id,order_number,user_id,customer_name,phone,address,city,state,pincode,status,tracking_id,total_amount,payment_method,payment_status,payment_reference,cancel_reason,return_status,created_at
+1,ORD-4B2B46BD,2,John Smith,9876543210,"Address 2, Street 0",City,State,000000,Processing,TRK-37B9AD5ACF,4398.0,Cash on Delivery,Pending,,,Not Requested,2026-05-01 04:38:22.269384
+2,ORD-061AB837,2,John Smith,9876543210,"Address 3, Street 0",City,State,000000,Pending,TRK-74D3BCA93A,7497.0,Cash on Delivery,Pending,,,Not Requested,2026-04-28 04:38:22.269656
+3,ORD-6B339DBD,2,John Smith,9876543210,"Address 4, Street 0",City,State,000000,Cancelled,TRK-903977FF6C,7196.0,Cash on Delivery,Pending,,,Not Requested,2026-04-25 04:38:22.269814
+4,ORD-3A84A501,3,Sarah Johnson,8765432109,"Address 2, Street 1",City,State,000000,Processing,TRK-E14B638124,4998.0,Cash on Delivery,Pending,,,Not Requested,2026-05-01 04:38:22.269923
+5,ORD-AB24FCE7,3,Sarah Johnson,8765432109,"Address 3, Street 1",City,State,000000,Pending,TRK-F08ED9D245,5397.0,Cash on Delivery,Pending,,,Not Requested,2026-04-28 04:38:22.270031
+6,ORD-C5EE6E4E,3,Sarah Johnson,8765432109,"Address 4, Street 1",City,State,000000,Cancelled,TRK-1BEB4015A6,9196.0,Cash on Delivery,Pending,,,Not Requested,2026-04-25 04:38:22.270131
+7,ORD-AA25197F,4,Mike Davis,7654321098,"Address 2, Street 2",City,State,000000,Processing,TRK-BE29DE810C,3598.0,Cash on Delivery,Pending,,,Not Requested,2026-05-01 04:38:22.270238
+8,ORD-588A2214,4,Mike Davis,7654321098,"Address 3, Street 2",City,State,000000,Delivered,TRK-C3A3BC5734,6897.0,Cash on Delivery,Pending,,,Not Requested,2026-04-28 04:38:22.270312
+9,ORD-572A4A28,4,Mike Davis,7654321098,"Address 4, Street 2",City,State,000000,Delivered,TRK-DE25936C88,5996.0,Cash on Delivery,Pending,,,Not Requested,2026-04-25 04:38:22.270371
+10,ORD-4AB5FD0D,5,Emily Brown,6543210987,"Address 2, Street 3",City,State,000000,Delivered,TRK-AA0E0BCBEB,4598.0,Cash on Delivery,Pending,,,Not Requested,2026-05-01 04:38:22.270457
+11,ORD-770DFF0D,5,Emily Brown,6543210987,"Address 3, Street 3",City,State,000000,Delivered,TRK-9BDD20769F,4497.0,Cash on Delivery,Pending,,,Not Requested,2026-04-28 04:38:22.270561
+12,ORD-BE84A304,5,Emily Brown,6543210987,"Address 4, Street 3",City,State,000000,Delivered,TRK-B628602D84,10396.0,Cash on Delivery,Pending,,,Not Requested,2026-04-25 04:38:22.270625
+13,ORD-04510087,6,David Wilson,5432109876,"Address 2, Street 4",City,State,000000,Processing,TRK-9ED182CECE,2998.0,Cash on Delivery,Pending,,,Not Requested,2026-05-01 04:38:22.270686
+14,ORD-7F7B14D9,6,David Wilson,5432109876,"Address 3, Street 4",City,State,000000,Pending,TRK-312CC23140,7797.0,Cash on Delivery,Pending,,,Not Requested,2026-04-28 04:38:22.270755
+15,ORD-ABC864C2,6,David Wilson,5432109876,"Address 4, Street 4",City,State,000000,Cancelled,TRK-CE1F8C5978,3196.0,Cash on Delivery,Pending,,,Not Requested,2026-04-25 04:38:22.270892
+16,ORD-3E38FA48,7,Lisa Anderson,4321098765,"Address 2, Street 5",City,State,000000,Shipped,123,5198.0,Cash on Delivery,Pending,,,Not Requested,2026-05-01 04:38:22.270984
+17,ORD-191C637E,7,Lisa Anderson,4321098765,"Address 3, Street 5",City,State,000000,Pending,TRK-2FD7DD242B,2397.0,Cash on Delivery,Pending,,,Not Requested,2026-04-28 04:38:22.271067
+18,ORD-DAA36EC2,7,Lisa Anderson,4321098765,"Address 4, Street 5",City,State,000000,Cancelled,TRK-9373BA1E8F,7596.0,Cash on Delivery,Pending,,,Not Requested,2026-04-25 04:38:22.271120
+19,ORD80080408,8,s ,asd,asdf,asdfg,ASdf,sd,Shipped,TRKK63SL6WQY7,799.0,Online,Paid,PAYMNAJPPIWT2,,Not Requested,2026-05-07 04:52:13.082880

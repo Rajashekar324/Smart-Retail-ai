@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">🔄 Data Engineering Dashboard</h1>
+    
+    <!-- Pipeline Stats -->
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px;">
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+            <div id="totalPipelines" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Total Pipelines</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1dd1a1 0%, #10ac84 100%); color: white; border-radius: 8px;">
+            <div id="runningPipelines" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Running</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); color: white; border-radius: 8px;">
+            <div id="failedPipelines" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Failed (24h)</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%); color: white; border-radius: 8px;">
+            <div id="recordsProcessed" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Records (24h)</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 8px;">
+            <div id="successRate" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Success Rate</div>
+        </div>
+    </div>
+    
+    <!-- Data Flow Layers -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">📊 Data Flow Architecture</h2>
+        <div id="dataFlowLayers" style="display: grid; gap: 15px;">
+            <p style="color: #666;">Loading...</p>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <!-- Pipeline Status -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">🔄 Pipeline Status</h2>
+            <div id="pipelineStatus" style="max-height: 400px; overflow-y: auto;">
+                <p style="color: #666;">Loading...</p>
+            </div>
+        </div>
+        
+        <!-- Ingestion Jobs -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📥 Ingestion Jobs</h2>
+            <div id="ingestionJobs" style="max-height: 400px; overflow-y: auto;">
+                <p style="color: #666;">Loading...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <!-- Databricks Runs -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">⚡ Databricks Runs</h2>
+            <div id="databricksRuns" style="max-height: 400px; overflow-y: auto;">
+                <p style="color: #666;">Loading...</p>
+            </div>
+        </div>
+        
+        <!-- ADF Pipelines -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">🔗 Azure Data Factory</h2>
+            <div id="adfPipelines" style="max-height: 400px; overflow-y: auto;">
+                <p style="color: #666;">Loading...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Pipeline Runs -->
+    <div class="glass-card">
+        <h2 style="margin-bottom: 20px;">📋 Recent Pipeline Runs</h2>
+        <div id="pipelineRuns" style="max-height: 400px; overflow-y: auto;">
+            <p style="color: #666;">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadPipelineStatus() {
+    try {
+        const response = await fetch('/api/admin/data/pipelines');
+        const data = await response.json();
+        
+        document.getElementById('totalPipelines').textContent = data.total_pipelines || 0;
+        document.getElementById('runningPipelines').textContent = data.running || 0;
+        document.getElementById('failedPipelines').textContent = data.failed_last_24h || 0;
+        
+        const container = document.getElementById('pipelineStatus');
+        if (data.pipelines) {
+            container.innerHTML = data.pipelines.map(p => `
+                <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px;
+                    ${p.status === 'running' ? 'border-left: 3px solid #feca57;' : p.status === 'failed' ? 'border-left: 3px solid #ff6b6b;' : 'border-left: 3px solid #1dd1a1;'}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <strong>${p.name}</strong>
+                            <div style="color: #666; font-size: 14px;">${p.description}</div>
+                            <div style="color: #999; font-size: 12px; margin-top: 4px;">
+                                ${p.type.toUpperCase()} | ${p.schedule}
+                            </div>
+                        </div>
+                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; 
+                            ${p.status === 'running' ? 'background: #ffd; color: #960;' : p.status === 'failed' ? 'background: #fee; color: #c33;' : 'background: #efe; color: #3c3;'}">${p.status}</span>
+                    </div>
+                    <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 13px; color: #666;">
+                        <span>Success Rate: ${p.success_rate}%</span>
+                        <span>Last Run: ${p.last_run ? new Date(p.last_run).toLocaleTimeString() : 'Never'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading pipeline status:', error);
+    }
+}
+
+async function loadDataFlow() {
+    try {
+        const response = await fetch('/api/admin/data/flow');
+        const data = await response.json();
+        
+        const container = document.getElementById('dataFlowLayers');
+        if (data.layers) {
+            const layers = ['raw', 'staging', 'curated', 'analytics', 'ml_features'];
+            container.innerHTML = layers.map((layerKey, index) => {
+                const layer = data.layers[layerKey];
+                return `
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="flex: 1; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="font-size: 18px;">${layer.name}</strong>
+                                    <div style="font-size: 14px; opacity: 0.9;">${layer.description}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 24px; font-weight: bold;">${layer.tables}</div>
+                                    <div style="font-size: 12px; opacity: 0.9;">Tables</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 14px;">
+                                <span>${layer.records.toLocaleString()} records</span>
+                                <span>${layer.size_gb}GB</span>
+                                <span>Updated: ${new Date(layer.last_update || layer.last_ingestion).toLocaleTimeString()}</span>
+                            </div>
+                        </div>
+                        ${index < layers.length - 1 ? '<div style="font-size: 24px; color: #667eea;">→</div>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Error loading data flow:', error);
+    }
+}
+
+async function loadIngestionJobs() {
+    try {
+        const response = await fetch('/api/admin/data/ingestion');
+        const data = await response.json();
+        
+        const container = document.getElementById('ingestionJobs');
+        if (data.jobs) {
+            container.innerHTML = data.jobs.map(j => `
+                <div style="padding: 12px; border-bottom: 1px solid #ddd;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong>${j.name}</strong>
+                        <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; 
+                            ${j.status === 'running' ? 'background: #ffd; color: #960;' : j.status === 'scheduled' ? 'background: #e3f2fd; color: #1976d2;' : 'background: #efe; color: #3c3;'}">${j.status}</span>
+                    </div>
+                    <div style="color: #666; font-size: 13px;">${j.source} → ${j.destination}</div>
+                    <div style="color: #999; font-size: 12px; margin-top: 4px;">
+                        ${j.status === 'running' ? `${j.records_per_min.toLocaleString()} records/min | ${j.latency_seconds}s latency` : j.next_run ? `Next: ${new Date(j.next_run).toLocaleTimeString()}` : `Last: ${new Date(j.last_record).toLocaleTimeString()}`}
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading ingestion jobs:', error);
+    }
+}
+
+async function loadDatabricksRuns() {
+    try {
+        const response = await fetch('/api/admin/data/databricks');
+        const data = await response.json();
+        
+        const container = document.getElementById('databricksRuns');
+        if (data.runs) {
+            container.innerHTML = data.runs.map(r => `
+                <div style="padding: 12px; border-bottom: 1px solid #ddd;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong>${r.job_name}</strong>
+                        <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; 
+                            ${r.status === 'running' ? 'background: #ffd; color: #960;' : 'background: #efe; color: #3c3;'}">${r.status}</span>
+                    </div>
+                    <div style="color: #666; font-size: 13px;">Cluster: ${r.cluster}</div>
+                    <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${r.tasks.map(t => `
+                            <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; 
+                                ${t.status === 'success' ? 'background: #efe; color: #3c3;' : t.status === 'running' ? 'background: #ffd; color: #960;' : 'background: #fee; color: #c33;'}">${t.name} (${t.duration || '-'}m)</span>
+                        `).join('')}
+                    </div>
+                    ${r.output_rows ? `<div style="color: #999; font-size: 12px; margin-top: 4px;">Output: ${r.output_rows.toLocaleString()} rows</div>` : ''}
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading Databricks runs:', error);
+    }
+}
+
+async function loadADFPipelines() {
+    try {
+        const response = await fetch('/api/admin/data/adf');
+        const data = await response.json();
+        
+        const container = document.getElementById('adfPipelines');
+        if (data.pipelines) {
+            container.innerHTML = data.pipelines.map(p => `
+                <div style="padding: 12px; border-bottom: 1px solid #ddd;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong>${p.name}</strong>
+                        <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; 
+                            ${p.status === 'running' ? 'background: #ffd; color: #960;' : 'background: #efe; color: #3c3;'}">${p.status}</span>
+                    </div>
+                    <div style="color: #666; font-size: 13px;">Folder: ${p.folder}</div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: #999;">
+                        <span>${p.activities} activities</span>
+                        <span>${p.duration}</span>
+                        <span>${p.data_read_gb}GB → ${p.data_written_gb}GB</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading ADF pipelines:', error);
+    }
+}
+
+async function loadStatistics() {
+    try {
+        const response = await fetch('/api/admin/data/statistics');
+        const data = await response.json();
+        
+        document.getElementById('recordsProcessed').textContent = (data.total_records_processed / 1000000).toFixed(1) + 'M';
+        document.getElementById('successRate').textContent = data.success_rate + '%';
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+async function loadPipelineRuns() {
+    try {
+        const response = await fetch('/api/admin/data/pipelines/all/runs?limit=30');
+        const data = await response.json();
+        
+        const container = document.getElementById('pipelineRuns');
+        if (data.runs) {
+            container.innerHTML = `<table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 10px; text-align: left;">Pipeline</th>
+                        <th style="padding: 10px; text-align: center;">Type</th>
+                        <th style="padding: 10px; text-align: center;">Status</th>
+                        <th style="padding: 10px; text-align: center;">Records</th>
+                        <th style="padding: 10px; text-align: center;">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.runs.map(r => `
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 10px;">${r.pipeline_name}</td>
+                            <td style="padding: 10px; text-align: center; text-transform: uppercase; font-size: 12px;">${r.type}</td>
+                            <td style="padding: 10px; text-align: center;">
+                                <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; 
+                                    ${r.status === 'success' ? 'background: #efe; color: #3c3;' : r.status === 'running' ? 'background: #ffd; color: #960;' : 'background: #fee; color: #c33;'}">${r.status}</span>
+                            </td>
+                            <td style="padding: 10px; text-align: center; font-size: 13px;">${r.records_processed.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: center; font-size: 13px; color: #666;">${new Date(r.start_time).toLocaleTimeString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+        }
+    } catch (error) {
+        console.error('Error loading pipeline runs:', error);
+    }
+}
+
+// Load all data
+loadPipelineStatus();
+loadDataFlow();
+loadIngestionJobs();
+loadDatabricksRuns();
+loadADFPipelines();
+loadStatistics();
+loadPipelineRuns();
+
+// Refresh every 30 seconds
+setInterval(() => {
+    loadPipelineStatus();
+    loadIngestionJobs();
+    loadDatabricksRuns();
+    loadADFPipelines();
+    loadStatistics();
+    loadPipelineRuns();
+}, 30000);
+</script>
+{% endblock %}

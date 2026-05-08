@@ -1,0 +1,9 @@
+id,sku,name,category,description,price,stock,image,sizes,created_at
+1,SH-TS-001,Classic Black T-Shirt,T-Shirts,Premium cotton black t-shirt for daily wear.,799.0,34,https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop,"S,M,L,XL",2026-05-07 04:38:22.256668
+2,SH-HD-002,Urban Grey Hoodie,Hoodies,Soft fleece hoodie with modern streetwear fit.,1899.0,18,https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=800&auto=format&fit=crop,"M,L,XL",2026-05-07 04:38:22.256674
+3,SH-JN-003,Slim Fit Blue Jeans,Jeans,Stretchable slim-fit jeans with clean finish.,2199.0,22,https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=800&auto=format&fit=crop,"30,32,34,36",2026-05-07 04:38:22.256677
+4,SH-JK-004,Denim Jacket,Jackets,Versatile denim jacket for every season.,2499.0,16,https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=800&auto=format&fit=crop,"M,L,XL",2026-05-07 04:38:22.256679
+5,SH-DR-005,Floral Summer Dress,Dresses,Lightweight floral dress for festive and casual outings.,399.0,27,https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=800&auto=format&fit=crop,"S,M,L",2026-05-07 04:38:22.256682
+6,SH-SH-006,White Sneakers,Footwear,Minimal everyday sneakers with cushioned sole.,2299.0,14,https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800&auto=format&fit=crop,"7,8,9,10",2026-05-07 04:38:22.256684
+7,SH-SR-007,Formal Checked Shirt,Shirts,Wrinkle-resistant checked shirt for office wear.,1499.0,26,https://images.unsplash.com/photo-1603252109303-2751441dd157?q=80&w=800&auto=format&fit=crop,"M,L,XL",2026-05-07 04:38:22.256687
+8,SH-KR-008,Ethnic Kurta Set,Ethnic,Elegant kurta set for festive celebrations.,2599.0,12,https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop,"S,M,L,XL",2026-05-07 04:38:22.256690

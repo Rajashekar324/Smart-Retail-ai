@@ -1,0 +1,181 @@
+{
+  "name": "SmartRetail_Master_Pipeline",
+  "properties": {
+    "description": "Master orchestration pipeline for Smart Retail data engineering",
+    "activities": [
+      {
+        "name": "Ingest_Raw_Data",
+        "description": "Execute ingestion pipeline to copy data from source to raw layer",
+        "type": "ExecutePipeline",
+        "dependsOn": [],
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "Ingest_Raw_Data_Pipeline",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "name": "Transform_Staged_Data",
+        "description": "Execute Databricks notebook for data transformation",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "Ingest_Raw_Data",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "Transform_Staged_Pipeline",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "name": "Curate_Analytics_Data",
+        "description": "Execute curation pipeline for analytics-ready data",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "Transform_Staged_Data",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "Curate_Analytics_Pipeline",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "name": "Refresh_PowerBI_Dataset",
+        "description": "Trigger Power BI dataset refresh",
+        "type": "WebActivity",
+        "dependsOn": [
+          {
+            "activity": "Curate_Analytics_Data",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "method": "POST",
+          "headers": {
+            "Authorization": {
+              "value": "@concat('Bearer ', activity('Get_PowerBI_Token').output.access_token)",
+              "type": "Expression"
+            }
+          },
+          "url": {
+            "value": "@concat('https://api.powerbi.com/v1.0/myorg/groups/', pipeline().parameters.workspaceId, '/datasets/', pipeline().parameters.datasetId, '/refreshes')",
+            "type": "Expression"
+          },
+          "body": {
+            "notifyOption": "MailOnFailure"
+          }
+        }
+      },
+      {
+        "name": "Get_PowerBI_Token",
+        "description": "Get Azure AD token for Power BI API",
+        "type": "WebActivity",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": true,
+          "secureInput": true
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "url": "https://login.microsoftonline.com/<tenant-id>/oauth2/token",
+          "body": {
+            "value": "grant_type=client_credentials&client_id=<client-id>&client_secret=<client-secret>&resource=https://analysis.windows.net/powerbi/api",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "Send_Success_Notification",
+        "description": "Send pipeline success notification",
+        "type": "WebActivity",
+        "dependsOn": [
+          {
+            "activity": "Refresh_PowerBI_Dataset",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "url": "https://hooks.slack.com/services/<webhook-url>",
+          "body": {
+            "text": "✅ Data pipeline completed successfully. Power BI dataset refreshed."
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "workspaceId": {
+        "type": "String",
+        "defaultValue": ""
+      },
+      "datasetId": {
+        "type": "String",
+        "defaultValue": ""
+      }
+    },
+    "variables": {
+      "pipelineStartTime": {
+        "type": "String",
+        "defaultValue": "@utcNow()"
+      }
+    },
+    "folder": {
+      "name": "SmartRetail/Master"
+    },
+    "annotations": []
+  }
+}

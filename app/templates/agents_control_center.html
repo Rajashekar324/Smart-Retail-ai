@@ -1,0 +1,720 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .agent-task-grid {
+        display: grid;
+        grid-template-columns: minmax(300px, 1fr) minmax(400px, 1.5fr);
+        gap: 30px;
+        margin-bottom: 30px;
+        align-items: start;
+        transition: all 0.3s ease;
+    }
+
+    /* When sidebar is open - narrower layout */
+    body.with-admin-sidebar:not(.collapsed) .agent-task-grid {
+        grid-template-columns: minmax(280px, 1fr) minmax(380px, 1.5fr);
+        gap: 20px;
+    }
+
+    /* When sidebar is collapsed - wider layout */
+    body.with-admin-sidebar.collapsed .agent-task-grid {
+        grid-template-columns: minmax(350px, 0.8fr) minmax(550px, 1.2fr);
+        gap: 30px;
+    }
+    .agent-form-grid {
+        display: grid;
+        gap: 18px;
+    }
+    .agent-field label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 700;
+        color: #334155;
+    }
+    .agent-field select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #dbe3ef;
+        border-radius: 8px;
+        background: #fff;
+    }
+    .agent-result-panel {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        min-height: 300px;
+        max-height: 560px;
+        overflow-y: auto;
+        font-size: 14px;
+        line-height: 1.6;
+        border: 1px solid #e2e8f0;
+    }
+    .result-shell { display: grid; gap: 16px; }
+    .result-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+    }
+    .result-header h3 { margin: 0 0 6px; }
+    .result-header p { margin: 0; color: #64748b; }
+    .result-status {
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .result-summary {
+        background: #fff;
+        border-left: 4px solid #667eea;
+        padding: 14px 16px;
+        border-radius: 8px;
+        border-top: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .insight-bullets {
+        margin: 0;
+        padding-left: 20px;
+        color: #334155;
+    }
+    .insight-bullets li {
+        margin: 8px 0;
+        padding-left: 4px;
+    }
+    .result-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+    }
+    .result-metric {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px;
+    }
+    .result-metric div { color: #64748b; font-size: 12px; margin-bottom: 6px; }
+    .result-metric strong { font-size: 18px; color: #0f172a; overflow-wrap: anywhere; }
+    .result-section {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+    }
+    .result-section h4 { margin: 0 0 12px; color: #0f172a; }
+    .result-table-wrap { overflow: auto; }
+    .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 560px;
+    }
+    .result-table th {
+        padding: 11px 12px;
+        text-align: left;
+        color: #334155;
+        background: #eef2ff;
+        border-bottom: 1px solid #dbe3ef;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    .result-table td {
+        padding: 11px 12px;
+        border-bottom: 1px solid #eef2f7;
+        vertical-align: top;
+        color: #334155;
+    }
+    .result-list { margin: 0; padding-left: 18px; }
+    .result-list li { margin: 6px 0; }
+    @media (max-width: 1200px) {
+        body.with-admin-sidebar:not(.collapsed) .agent-task-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 980px) {
+        .agent-task-grid,
+        body.with-admin-sidebar:not(.collapsed) .agent-task-grid,
+        body.with-admin-sidebar.collapsed .agent-task-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<div class="container" style="max-width: 1600px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">🤖 Multi-Agent Control Center</h1>
+    
+    <!-- Agent Status Cards -->
+    <div id="agentStatusCards" style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; justify-content: center; max-width: 1200px; margin-left: auto; margin-right: auto;">
+        <!-- Dynamically populated -->
+    </div>
+    
+    <!-- Task Execution Panel -->
+    <div class="agent-task-grid">
+        <!-- Execute Task -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">⚡ Execute Agent Task</h2>
+            <div class="agent-form-grid">
+                <div class="agent-field">
+                    <label>Select Agent</label>
+                    <select id="agentSelect">
+                        <option value="">Select an agent...</option>
+                        <option value="inventory">📦 Inventory Agent</option>
+                        <option value="retail_analyst">📊 Retail Analyst Agent</option>
+                        <option value="ml_insights">🤖 ML Insights Agent</option>
+                        <option value="document_intelligence">📄 Document Intelligence Agent</option>
+                    </select>
+                </div>
+                <div class="agent-field">
+                    <label>Task Type</label>
+                    <select id="taskType">
+                        <option value="">Select task type...</option>
+                    </select>
+                </div>
+                <button onclick="executeTask()" class="btn" style="padding: 12px;">Execute Task</button>
+            </div>
+        </div>
+        
+        <!-- Task Result -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📤 Task Result</h2>
+            <div id="taskResult" class="agent-result-panel">
+                <p style="color: #666;">Execute a task to see results...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Agent Tasks History -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">📋 Recent Agent Tasks</h2>
+        <div id="taskHistory">
+            <p style="color: #666;">Loading...</p>
+        </div>
+    </div>
+    
+    <!-- Orchestration Logs -->
+    <div class="glass-card">
+        <h2 style="margin-bottom: 20px;">📜 Orchestration Logs</h2>
+        <div id="orchestrationLogs" style="max-height: 400px; overflow-y: auto;">
+            <p style="color: #666;">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const taskTypes = {
+    inventory: [
+        { value: "predict_shortages", label: "📦 Predict Shortages" },
+        { value: "recommend_reorder", label: "📦 Recommend Reorder Quantities" },
+        { value: "detect_anomalies", label: "📦 Detect Inventory Anomalies" },
+        { value: "warehouse_analytics", label: "📦 Warehouse Analytics" },
+        { value: "ai_inventory_analysis", label: "🤖 AI Inventory Analysis" }
+    ],
+    retail_analyst: [
+        { value: "sales_trend_analysis", label: "📊 Sales Trend Analysis" },
+        { value: "customer_segmentation", label: "📊 Customer Segmentation" },
+        { value: "product_performance", label: "📊 Product Performance" },
+        { value: "ai_retail_insights", label: "🤖 AI Retail Insights" }
+    ],
+    ml_insights: [
+        { value: "revenue_prediction", label: "🔮 Revenue Prediction" },
+        { value: "churn_prediction", label: "🔮 Churn Prediction" },
+        { value: "demand_forecast", label: "🔮 Demand Forecast" },
+        { value: "ai_ml_analysis", label: "🤖 AI ML Analysis" }
+    ],
+    document_intelligence: [
+        { value: "analyze_documents", label: "📄 Analyze Documents" },
+        { value: "extract_keywords", label: "📄 Extract Keywords" },
+        { value: "summarize_content", label: "📄 Summarize Content" },
+        { value: "semantic_search", label: "🔍 Semantic Search" },
+        { value: "answer_question", label: "❓ Answer Question (RAG)" }
+    ]
+};
+
+document.getElementById('agentSelect').addEventListener('change', function() {
+    const agent = this.value;
+    const taskSelect = document.getElementById('taskType');
+    taskSelect.innerHTML = '<option value="">Select task type...</option>';
+    
+    if (agent && taskTypes[agent]) {
+        taskTypes[agent].forEach(task => {
+            taskSelect.innerHTML += `<option value="${task.value}">${task.label}</option>`;
+        });
+    }
+});
+
+async function loadAgentStatus() {
+    try {
+        const response = await fetch('/api/admin/agents/status');
+        const data = await response.json();
+        
+        const container = document.getElementById('agentStatusCards');
+        container.innerHTML = '';
+        
+        // System status indicator
+        const systemStatus = data.ai_available ? 
+            '<span style="color: #1dd1a1;">🟢 AI Enabled</span>' : 
+            '<span style="color: #ff6b6b;">🔴 AI Offline</span>';
+        const ragStatus = data.rag_available ? 
+            '<span style="color: #1dd1a1;">🟢 RAG Enabled</span>' : 
+            '<span style="color: #8395a7;">⚪ RAG Offline</span>';
+        
+        container.innerHTML += `
+            <div class="glass-card" style="text-align: center; padding: 20px; border-top: 4px solid #667eea; width: 100%; flex-basis: 100%;">
+                <div style="font-weight: bold; margin-bottom: 10px;">🤖 Multi-Agent System Status</div>
+                <div style="font-size: 14px; color: #666;">
+                    ${systemStatus} | ${ragStatus} | 
+                    Active: ${data.active_agents} | Queue: ${data.queue_length}
+                </div>
+            </div>
+        `;
+        
+        for (const [name, agent] of Object.entries(data.agents)) {
+            const statusColor = agent.status === 'active' ? '#1dd1a1' : 
+                              agent.status === 'busy' ? '#feca57' :
+                              agent.status === 'error' ? '#ff6b6b' : '#8395a7';
+            
+            const aiBadge = agent.ai_available ? 
+                '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">AI</span>' : '';
+            
+            container.innerHTML += `
+                <div class="glass-card" style="text-align: center; padding: 20px; border-top: 4px solid ${statusColor}; width: 260px; flex-shrink: 0;">
+                    <div style="font-size: 32px; margin-bottom: 10px;">
+                        ${name === 'inventory' ? '📦' : 
+                          name === 'retail_analyst' ? '📊' :
+                          name === 'ml_insights' ? '🔮' : '📄'}
+                    </div>
+                    <div style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">${agent.name} ${aiBadge}</div>
+                    <div style="color: ${statusColor}; font-size: 12px; text-transform: uppercase; font-weight: 600;">${agent.status}</div>
+                    <div style="color: #666; font-size: 11px; margin-top: 8px;">
+                    </div>
+                    <div style="color: #666; font-size: 10px; margin-top: 4px;">
+                        Health: ${agent.health_score}% 
+                    </div>
+                    <button onclick="resetAgent('${name}')" class="btn btn-outline" style="padding: 6px 12px; font-size: 11px; margin-top: 10px;">Reset</button>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading agent status:', error);
+    }
+}
+
+async function executeTask() {
+    const agent = document.getElementById('agentSelect').value;
+    const taskType = document.getElementById('taskType').value;
+    
+    if (!agent || !taskType) {
+        alert('Please select an agent and task type');
+        return;
+    }
+    
+    const params = {};
+    
+    document.getElementById('taskResult').innerHTML = '<p style="color: #666;">Executing...</p>';
+    
+    try {
+        const response = await fetch(`/api/admin/agents/${agent}/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_type: taskType, params: params })
+        });
+        
+        const result = await response.json();
+        document.getElementById('taskResult').innerHTML = formatAgentResult(result, agent, taskType);
+        
+        loadTaskHistory();
+        loadAgentStatus();
+    } catch (error) {
+        document.getElementById('taskResult').innerHTML = `<p style="color: #c33;">Error: ${error}</p>`;
+    }
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function titleCase(value) {
+    return String(value || '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function isPlainObject(value) {
+    return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function formatValue(value) {
+    if (value === null || value === undefined || value === '') return 'Not available';
+    if (typeof value === 'string' && isIsoDate(value)) return formatDateTime(value);
+    if (typeof value === 'number') return Number.isInteger(value) ? value.toLocaleString() : value.toFixed(2);
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (typeof value === 'string') return escapeHtml(value);
+    if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? '' : 's'}`;
+    if (isPlainObject(value)) {
+        return Object.entries(value)
+            .slice(0, 4)
+            .map(([key, val]) => `${titleCase(key)}: ${formatValue(val)}`)
+            .join(', ');
+    }
+    return escapeHtml(value);
+}
+
+function isIsoDate(value) {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function formatDateTime(value) {
+    if (!value) return 'Not available';
+    const date = new Date(value.endsWith('Z') ? value : `${value}Z`);
+    if (Number.isNaN(date.getTime())) return escapeHtml(value);
+
+    return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+}
+
+function formatRelativeTime(value) {
+    if (!value) return '';
+    const date = new Date(value.endsWith('Z') ? value : `${value}Z`);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    if (seconds < 10) return 'just now';
+    if (seconds < 60) return `${seconds} sec ago`;
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hr ago`;
+
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function splitInsightText(text) {
+    if (!text || typeof text !== 'string') return [];
+    const cleaned = text
+        .replace(/\r/g, '\n')
+        .replace(/\*\*/g, '')
+        .trim();
+
+    let parts = cleaned
+        .split(/\n+|(?:^|\s)(?:[-*•]|\d+[.)])\s+/)
+        .map(item => item.trim())
+        .filter(Boolean);
+
+    if (parts.length <= 1 && cleaned.length > 140) {
+        parts = cleaned
+            .split(/(?<=[.!?])\s+(?=[A-Z0-9])/)
+            .map(item => item.trim())
+            .filter(Boolean);
+    }
+
+    return parts;
+}
+
+function formatInsightBlock(text) {
+    const points = splitInsightText(text);
+    if (!points.length) return formatValue(text);
+
+    if (points.length === 1) {
+        return `<p style="margin:0;">${formatValue(points[0])}</p>`;
+    }
+
+    return `
+        <ul class="insight-bullets">
+            ${points.map(point => `<li>${formatValue(point)}</li>`).join('')}
+        </ul>
+    `;
+}
+
+function isInsightKey(key) {
+    const normalized = String(key || '').toLowerCase();
+    return normalized.includes('insight') ||
+        normalized.includes('analysis') ||
+        normalized.includes('recommendation') ||
+        normalized.includes('strategy') ||
+        normalized === 'summary' ||
+        normalized === 'message';
+}
+
+function insightSection(title, value) {
+    if (Array.isArray(value)) {
+        return `
+            <div class="result-section">
+                <h4>${titleCase(title)}</h4>
+                <ul class="insight-bullets">
+                    ${value.map(item => `<li>${isPlainObject(item) ? formatValue(item) : formatValue(item)}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="result-section">
+            <h4>${titleCase(title)}</h4>
+            ${formatInsightBlock(String(value || ''))}
+        </div>
+    `;
+}
+
+function timeCell(value) {
+    return `
+        <div class="live-time" data-time="${escapeHtml(value || '')}" style="line-height:1.35;">
+            <div>${formatDateTime(value)}</div>
+            <small style="color:#64748b;">${formatRelativeTime(value)}</small>
+        </div>
+    `;
+}
+
+function refreshLiveTimes() {
+    document.querySelectorAll('.live-time').forEach(el => {
+        const value = el.getAttribute('data-time');
+        el.innerHTML = `<div>${formatDateTime(value)}</div><small style="color:#64748b;">${formatRelativeTime(value)}</small>`;
+    });
+}
+
+function metricCards(obj) {
+    const entries = Object.entries(obj || {})
+        .filter(([_, value]) => ['string', 'number', 'boolean'].includes(typeof value))
+        .slice(0, 6);
+
+    if (!entries.length) return '';
+
+    return `
+        <div class="result-metrics">
+            ${entries.map(([key, value]) => `
+                <div class="result-metric">
+                    <div>${titleCase(key)}</div>
+                    <strong>${formatValue(value)}</strong>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function objectTable(title, rows) {
+    if (!Array.isArray(rows) || !rows.length) return '';
+    const objectRows = rows.filter(isPlainObject);
+    if (!objectRows.length) {
+        return `
+            <div class="result-section">
+                <h4>${escapeHtml(title)}</h4>
+                <ul class="result-list">
+                    ${rows.map(item => `<li>${formatValue(item)}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    const headers = [...new Set(objectRows.flatMap(row => Object.keys(row)))].slice(0, 6);
+    return `
+        <div class="result-section">
+            <h4>${escapeHtml(title)}</h4>
+            <div class="result-table-wrap">
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        ${headers.map(header => `<th>${titleCase(header)}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${objectRows.slice(0, 12).map(row => `
+                        <tr>
+                            ${headers.map(header => `<td>${formatValue(row[header])}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    `;
+}
+
+function sectionFromValue(title, value) {
+    if (isInsightKey(title)) return insightSection(title, value);
+    if (Array.isArray(value)) return objectTable(titleCase(title), value);
+    if (isPlainObject(value)) {
+        const simpleValues = Object.fromEntries(Object.entries(value).filter(([_, item]) => !Array.isArray(item) && !isPlainObject(item)));
+        const nestedSections = Object.entries(value)
+            .filter(([_, item]) => Array.isArray(item) || isPlainObject(item))
+            .map(([key, item]) => sectionFromValue(key, item))
+            .join('');
+        return `
+            <div class="result-section">
+                <h4>${titleCase(title)}</h4>
+                ${metricCards(simpleValues)}
+                ${nestedSections}
+            </div>
+        `;
+    }
+    return `
+        <div class="result-section">
+            <strong>${titleCase(title)}:</strong> ${formatValue(value)}
+        </div>
+    `;
+}
+
+function formatAgentResult(response, agent, taskType) {
+    if (!response) {
+        return '<p style="color:#64748b;">No result was returned.</p>';
+    }
+
+    if (response.error) {
+        return `<div style="color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; padding:12px; border-radius:8px;"><strong>Error:</strong> ${escapeHtml(response.error)}</div>`;
+    }
+
+    const payload = response.result || response;
+    const status = response.status || payload.status || 'completed';
+    const summary = payload.summary || payload.message || payload.analysis || payload.insight || payload.recommendation;
+    const simplePayload = isPlainObject(payload)
+        ? Object.fromEntries(Object.entries(payload).filter(([key, value]) =>
+            !isInsightKey(key) &&
+            !Array.isArray(value) &&
+            !isPlainObject(value)
+        ))
+        : {};
+
+    const insightSections = isPlainObject(payload)
+        ? Object.entries(payload)
+            .filter(([key, value]) => isInsightKey(key) && !['summary', 'message', 'analysis', 'insight', 'recommendation'].includes(key))
+            .map(([key, value]) => insightSection(key, value))
+            .join('')
+        : '';
+
+    const complexSections = isPlainObject(payload)
+        ? Object.entries(payload)
+            .filter(([key, value]) =>
+                !isInsightKey(key) &&
+                (Array.isArray(value) || isPlainObject(value))
+            )
+            .map(([key, value]) => sectionFromValue(key, value))
+            .join('')
+        : `<p>${formatValue(payload)}</p>`;
+
+    return `
+        <div class="result-shell">
+            <div class="result-header">
+                <div>
+                    <h3 style="margin:0 0 4px;">${titleCase(taskType)} Result</h3>
+                    <p style="margin:0; color:#64748b;">${titleCase(agent)} completed the task.</p>
+                </div>
+                <span class="result-status" style="background:${status === 'completed' ? '#dcfce7' : '#fef3c7'}; color:${status === 'completed' ? '#166534' : '#92400e'};">${titleCase(status)}</span>
+            </div>
+            ${summary ? `<div class="result-summary">${formatInsightBlock(summary)}</div>` : ''}
+            ${metricCards(simplePayload)}
+            ${insightSections}
+            ${complexSections || '<p style="color:#64748b;">Task completed successfully.</p>'}
+        </div>
+    `;
+}
+
+async function loadTaskHistory() {
+    try {
+        const response = await fetch('/api/admin/agents/tasks');
+        const data = await response.json();
+        
+        const container = document.getElementById('taskHistory');
+        if (data.tasks && data.tasks.length > 0) {
+            container.innerHTML = `<table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 10px; text-align: left;">Agent</th>
+                        <th style="padding: 10px; text-align: left;">Task</th>
+                        <th style="padding: 10px; text-align: center;">Status</th>
+                        <th style="padding: 10px; text-align: center;">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.tasks.map(t => `
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 10px;">${t.agent_name || t.agent || 'Unknown'}</td>
+                            <td style="padding: 10px;">${t.task_type || t.type || 'Unknown'}</td>
+                            <td style="padding: 10px; text-align: center;">
+                                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px;
+                                    ${t.status === 'completed' ? 'background: #efe; color: #3c3;' :
+                                      t.status === 'failed' ? 'background: #fee; color: #c33;' :
+                                      'background: #ffd; color: #960;'}">${t.status}</span>
+                                ${t.rag_enhanced ? '<span style="margin-left: 4px; background: #667eea; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">RAG</span>' : ''}
+                            </td>
+                            <td style="padding: 10px; text-align: center; font-size: 12px; color: #334155;">${timeCell(t.created_at)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+        } else {
+            container.innerHTML = '<p style="color: #666;">No tasks yet</p>';
+        }
+    } catch (error) {
+        console.error('Error loading task history:', error);
+    }
+}
+
+async function loadLogs() {
+    try {
+        const response = await fetch('/api/admin/agents/logs');
+        const data = await response.json();
+        
+        const container = document.getElementById('orchestrationLogs');
+        if (data.logs && data.logs.length > 0) {
+            container.innerHTML = data.logs.map(log => `
+                <div style="padding: 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 12px;">
+                    <span style="color: #999;">[${formatDateTime(log.timestamp)}]</span>
+                    <span style="color: #667eea; font-weight: bold;">${log.agent}</span>
+                    <span>${log.task}</span>
+                    <span style="color: ${log.status === 'completed' ? '#3c3' : log.status === 'failed' ? '#c33' : '#960'};">${log.status}</span>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p style="color: #666;">No logs yet</p>';
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+    }
+}
+
+async function resetAgent(agentName) {
+    if (!confirm(`Reset ${agentName} agent?`)) return;
+    
+    try {
+        const response = await fetch(`/api/admin/agents/${agentName}/reset`, { method: 'POST' });
+        if (response.ok) {
+            loadAgentStatus();
+        }
+    } catch (error) {
+        alert('Error resetting agent');
+    }
+}
+
+// Load data on page load
+loadAgentStatus();
+loadTaskHistory();
+loadLogs();
+
+// Refresh every 30 seconds
+setInterval(() => {
+    loadAgentStatus();
+    loadTaskHistory();
+    loadLogs();
+}, 30000);
+
+setInterval(refreshLiveTimes, 1000);
+</script>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px; margin-top: 80px;">
+    <h1 style="margin-bottom: 30px;">📊 Admin Analytics Dashboard</h1>
+    
+    <!-- Key Metrics -->
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px;">
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold;">₹{{ '%.0f'|format(analytics.metrics.total_revenue) }}</div>
+            <div style="margin-top: 5px;">Total Revenue</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold;">{{ analytics.metrics.total_orders }}</div>
+            <div style="margin-top: 5px;">Total Orders</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold;">₹{{ '%.0f'|format(analytics.metrics.profit) }}</div>
+            <div style="margin-top: 5px;">Profit</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold;">{{ analytics.metrics.total_customers }}</div>
+            <div style="margin-top: 5px;">Customers</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border-radius: 8px;">
+            <div style="font-size: 32px; font-weight: bold;">{{ analytics.metrics.active_users }}</div>
+            <div style="margin-top: 5px;">Active Users</div>
+        </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <!-- Revenue Trends Chart -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">💰 Revenue Trends (30 Days)</h2>
+            <canvas id="revenueChart" style="max-height: 350px;"></canvas>
+        </div>
+        
+        <!-- Order Status Breakdown -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📋 Order Status</h2>
+            <canvas id="orderStatusChart" style="max-height: 350px;"></canvas>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <!-- Customer Growth Chart -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">👥 Customer Growth (6 Months)</h2>
+            <canvas id="customerGrowthChart" style="max-height: 300px;"></canvas>
+        </div>
+        
+        <!-- Inventory Trends Chart -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📦 Inventory by Category</h2>
+            <canvas id="inventoryChart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+    
+    <!-- Anomaly Alerts -->
+    {% if analytics.anomaly_alerts %}
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">⚠️ Anomaly Alerts</h2>
+        <div style="display: grid; gap: 15px;">
+            {% for alert in analytics.anomaly_alerts %}
+            <div style="padding: 15px; border-radius: 8px; 
+                {% if alert.severity == 'high' %}background: #fee; border-left: 4px solid #c33;{% else %}background: #ffd; border-left: 4px solid #fc3;{% endif %}">
+                <strong>{{ alert.type|replace('_', ' ')|title }}</strong>
+                <p style="margin: 5px 0 0 0;">{{ alert.message }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- AI Insights -->
+    {% if analytics.ai_insights %}
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">🤖 AI Insights</h2>
+        <div style="display: grid; gap: 15px;">
+            {% for insight in analytics.ai_insights %}
+            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+                💡 {{ insight }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        <!-- Top Selling Products -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">🏆 Top Selling Products</h2>
+            <div style="display: grid; gap: 10px;">
+                {% for product in analytics.top_selling_products %}
+                <div style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; display: flex; justify-content: space-between;">
+                    <div>
+                        <strong>{{ product.name }}</strong>
+                        <div style="color: #666; font-size: 14px;">{{ product.category }}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div>{{ product.total_sold }} sold</div>
+                        <div style="color: #666; font-size: 14px;">₹{{ '%.0f'|format(product.total_revenue) }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Low Stock Alerts -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📉 Low Stock Alerts</h2>
+            {% if analytics.low_stock_alerts %}
+            <div style="display: grid; gap: 10px;">
+                {% for alert in analytics.low_stock_alerts %}
+                <div style="padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;
+                    {% if alert.severity == 'critical' %}background: #fee; border: 1px solid #c33;{% else %}background: #ffd; border: 1px solid #fc3;{% endif %}">
+                    <div>
+                        <strong>{{ alert.name }}</strong>
+                        <div style="color: #666; font-size: 14px;">{{ alert.category }}</div>
+                    </div>
+                    <span style="font-weight: bold; color: {% if alert.severity == 'critical' %}#c33{% else %}#960{% endif %};">{{ alert.stock }} left</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: #666;">No low stock alerts</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Revenue Trends Chart
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+const revenueData = {{ analytics.revenue_trends | tojson }};
+new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: revenueData.map(d => d.date),
+        datasets: [{
+            label: 'Revenue (₹)',
+            data: revenueData.map(d => d.revenue),
+            borderColor: 'rgba(102, 126, 234, 1)',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+
+// Order Status Chart
+const orderStatusCtx = document.getElementById('orderStatusChart').getContext('2d');
+const orderStatusData = {{ analytics.order_status_breakdown | tojson }};
+new Chart(orderStatusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(orderStatusData),
+        datasets: [{
+            data: Object.values(orderStatusData),
+            backgroundColor: [
+                '#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#a8edea'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+
+// Customer Growth Chart
+const customerGrowthCtx = document.getElementById('customerGrowthChart').getContext('2d');
+const customerGrowthData = {{ analytics.customer_growth | tojson }};
+new Chart(customerGrowthCtx, {
+    type: 'bar',
+    data: {
+        labels: customerGrowthData.map(d => d.month),
+        datasets: [{
+            label: 'New Customers',
+            data: customerGrowthData.map(d => d.new_customers),
+            backgroundColor: 'rgba(240, 147, 251, 0.8)',
+            borderColor: 'rgba(240, 147, 251, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+        }
+    }
+});
+
+// Inventory Chart
+const inventoryCtx = document.getElementById('inventoryChart').getContext('2d');
+const inventoryData = {{ analytics.inventory_trends | tojson }};
+new Chart(inventoryCtx, {
+    type: 'bar',
+    data: {
+        labels: inventoryData.map(d => d.category),
+        datasets: [{
+            label: 'Stock',
+            data: inventoryData.map(d => d.total_stock),
+            backgroundColor: 'rgba(67, 233, 123, 0.8)',
+            borderColor: 'rgba(67, 233, 123, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+</script>
+{% endblock %}

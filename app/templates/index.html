@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero vibrant-hero">
+    <div class="container hero-grid">
+        <div>
+            <span class="tag">AI Customer Support Automation Platform</span>
+            <h1>Fashion that feels premium. Support that feels instant.</h1>
+            <p>Responsive clothing store with AI chatbot, online payments, visual search, product recommendations, ticketing, analytics, and admin controls.</p>
+            <div class="hero-actions">
+                <a class="btn" href="#products">Shop Now</a>
+                <a class="btn btn-outline btn-light" href="#visual-search">Visual Search</a>
+            </div>
+            <div class="hero-badges">
+                <span>RAG Support</span>
+                <span>Fast Checkout</span>
+                <span>Live Tracking</span>
+                <span>Vibrant UI</span>
+            </div>
+        </div>
+        <div class="hero-card promo-card gradient-panel">
+            <h3>What customers can do</h3>
+            <ul>
+                <li>Browse products and place orders</li>
+                <li>Pay online or choose Cash on Delivery</li>
+                <li>Track and cancel orders</li>
+                <li>Get AI support responses from chatbot</li>
+                <li>Raise support tickets instantly</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section id="visual-search" class="container section">
+    <div class="section-head">
+        <div>
+            <h2>AI Visual Search</h2>
+            <p>Search by style keyword or upload a photo. The demo uses the file name and keywords to find similar products.</p>
+        </div>
+    </div>
+    <div class="grid-two visual-shell">
+        <form method="get" action="/" class="visual-search-bar detail-card">
+            <input type="text" name="visual_query" value="{{ visual_query }}" placeholder="Enter keywords like denim-jacket, floral-dress, sneakers-white" />
+            <button class="btn" type="submit">Search Match</button>
+        </form>
+        <form method="post" action="/visual-search/upload" enctype="multipart/form-data" class="visual-search-bar detail-card">
+            <input type="file" name="file" accept="image/*" required />
+            <button class="btn" type="submit">Upload Photo</button>
+        </form>
+    </div>
+    {% if visual_query %}
+    <div class="section-head compact-head">
+        <h3>Visual matches for "{{ visual_query }}"</h3>
+    </div>
+    <div class="product-grid">
+        {% for product in visual_results %}
+        <article class="product-card glow-card">
+            <img src="{{ product.image }}" alt="{{ product.name }}" />
+            <div class="product-info">
+                <span class="category">{{ product.category }}</span>
+                <h3>{{ product.name }}</h3>
+                <div class="product-meta"><strong>₹{{ '%.0f'|format(product.price) }}</strong><span>Stock: {{ product.stock }}</span></div>
+                <a class="btn" href="/product/{{ product.id }}">View Product</a>
+            </div>
+        </article>
+        {% else %}
+        <div class="detail-card"><p>No close visual matches found yet. Try keywords like hoodie, kurta, floral, denim, or sneakers.</p></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</section>
+
+<section class="container section">
+    <div class="section-head">
+        <h2>Recommended For You</h2>
+        <p>Best picks based on trending inventory.</p>
+    </div>
+    <div class="product-grid mini-grid">
+        {% for product in recommended %}
+        <article class="product-card glow-card">
+            <img src="{{ product.image }}" alt="{{ product.name }}" />
+            <div class="product-info">
+                <span class="category">{{ product.category }}</span>
+                <h3>{{ product.name }}</h3>
+                <div class="product-meta"><strong>₹{{ '%.0f'|format(product.price) }}</strong><span>Stock: {{ product.stock }}</span></div>
+                <a class="btn" href="/product/{{ product.id }}">View Product</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section id="products" class="container section">
+    <div class="section-head">
+        <h2>Trending Products</h2>
+        <p>Realtime e-commerce inspired layout with vibrant product cards.</p>
+    </div>
+    <div class="product-grid">
+        {% for product in products %}
+        <article class="product-card glow-card">
+            <img src="{{ product.image }}" alt="{{ product.name }}" />
+            <div class="product-info">
+                <span class="category">{{ product.category }}</span>
+                <h3>{{ product.name }}</h3>
+                <p>{{ product.description }}</p>
+                <div class="product-meta">
+                    <strong>₹{{ '%.0f'|format(product.price) }}</strong>
+                    <span>Stock: {{ product.stock }}</span>
+                </div>
+                <a class="btn" href="/product/{{ product.id }}">View Product</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

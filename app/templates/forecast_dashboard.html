@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">📈 Demand Forecasting Dashboard</h1>
+    
+    <!-- CSV Upload Section -->
+    <div class="glass-card" style="margin-bottom: 20px;">
+        <h2 style="margin-bottom: 15px;">📤 Upload Custom Dataset</h2>
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: end;">
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">CSV File (date, revenue, orders)</label>
+                <input type="file" id="csvFile" accept=".csv" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <p style="color: #666; font-size: 12px; margin-top: 5px;">Required columns: date (YYYY-MM-DD), revenue (number), orders (number, optional)</p>
+            </div>
+            <button onclick="uploadCSV()" class="btn" style="padding: 10px 20px;">Upload CSV</button>
+        </div>
+        <div id="uploadStatus" style="margin-top: 10px;"></div>
+        <div id="dataInfo" style="margin-top: 10px; display: none;">
+            <p style="color: #3c3; font-weight: 500;">✅ <span id="recordCount"></span> records loaded from CSV</p>
+            <button onclick="trainWithCustomData()" class="btn" style="background: linear-gradient(135deg, #667eea, #764ba2); margin-top: 10px;">Train with Custom Data</button>
+            <button onclick="useDatabaseData()" class="btn btn-outline" style="margin-top: 10px; margin-left: 10px;">Use Database Data</button>
+        </div>
+    </div>
+    
+    <div style="display: grid; gap: 20px; margin-bottom: 30px;">
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">Train Forecasting Models</h2>
+            <p id="dataSource" style="color: #666; margin-bottom: 15px;">Data Source: Database</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Model Type</label>
+                    <select id="modelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="all">All Models</option>
+                        <option value="prophet">Prophet</option>
+                        <option value="arima">ARIMA</option>
+                        <option value="lstm">LSTM</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Forecast Period (Days)</label>
+                    <input type="number" id="forecastPeriod" value="30" min="7" max="90" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                <div></div>
+                <button onclick="trainModels()" class="btn" style="padding: 10px 20px;">Train & Forecast</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Forecast Results -->
+    <div id="forecastResults" style="display: none;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 30px;">
+            <!-- Forecast Chart -->
+            <div class="glass-card">
+                <h2 style="margin-bottom: 20px;">📊 Sales Forecast</h2>
+                <div style="position: relative; height: 400px; width: 100%;">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Model Comparison -->
+            <div class="glass-card">
+                <h2 style="margin-bottom: 20px;">🤖 Model Comparison</h2>
+                <div id="modelComparison"></div>
+            </div>
+        </div>
+        
+        <!-- Seasonal Insights -->
+        <div class="glass-card" style="margin-bottom: 30px;">
+            <h2 style="margin-bottom: 20px;">🌤️ Seasonal Insights</h2>
+            <div id="seasonalInsights"></div>
+        </div>
+        
+        <!-- Forecast Table -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📋 Forecast Data</h2>
+            <div id="forecastTable"></div>
+        </div>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="loadingState" style="display: none; text-align: center; padding: 40px;">
+        <p style="font-size: 18px;">Training models... This may take a few moments.</p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let forecastChart = null;
+let customData = null;
+
+async function uploadCSV() {
+    const fileInput = document.getElementById('csvFile');
+    if (!fileInput.files[0]) {
+        alert('Please select a CSV file');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    const statusDiv = document.getElementById('uploadStatus');
+    statusDiv.innerHTML = '<p style="color: #666;">Uploading and processing CSV...</p>';
+    
+    try {
+        const response = await fetch('/api/admin/forecast/upload-dataset', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            customData = result.data;
+            statusDiv.innerHTML = '';
+            document.getElementById('dataInfo').style.display = 'block';
+            document.getElementById('recordCount').textContent = result.record_count;
+        } else {
+            const errorMsg = result.detail || result.message || 'Unknown error';
+            statusDiv.innerHTML = `<p style="color: #c33;">Error: ${errorMsg}</p>`;
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<p style="color: #c33;">Network Error: ${error.message}</p>`;
+    }
+}
+
+async function trainWithCustomData() {
+    if (!customData) {
+        alert('Please upload a CSV file first');
+        return;
+    }
+    
+    const modelType = document.getElementById('modelType').value;
+    const periods = document.getElementById('forecastPeriod').value;
+    
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('forecastResults').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/admin/forecast/with-custom-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                data: customData,
+                model_type: modelType,
+                periods: parseInt(periods)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || data.error) {
+            const errorMsg = data.detail || data.error || 'Unknown error';
+            alert('Error: ' + errorMsg);
+            document.getElementById('loadingState').style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('dataSource').textContent = `Data Source: Custom CSV (${data.data_points} records)`;
+        displayForecasts(data);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('forecastResults').style.display = 'block';
+    } catch (error) {
+        alert('Error training models: ' + error.message);
+        document.getElementById('loadingState').style.display = 'none';
+    }
+}
+
+function useDatabaseData() {
+    customData = null;
+    document.getElementById('dataInfo').style.display = 'none';
+    document.getElementById('dataSource').textContent = 'Data Source: Database';
+    document.getElementById('csvFile').value = '';
+}
+
+async function trainModels() {
+    if (customData) {
+        trainWithCustomData();
+        return;
+    }
+    
+    const modelType = document.getElementById('modelType').value;
+    const periods = document.getElementById('forecastPeriod').value;
+    
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('forecastResults').style.display = 'none';
+    
+    try {
+        const response = await fetch(`/api/admin/forecast/train?model_type=${modelType}&periods=${periods}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            alert('Error: ' + data.error);
+            document.getElementById('loadingState').style.display = 'none';
+            return;
+        }
+        
+        displayForecasts(data);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('forecastResults').style.display = 'block';
+    } catch (error) {
+        alert('Error training models: ' + error);
+        document.getElementById('loadingState').style.display = 'none';
+    }
+}
+
+function displayForecasts(data) {
+    // Show warning if present
+    if (data.warning) {
+        const warningDiv = document.createElement('div');
+        warningDiv.style.padding = '15px';
+        warningDiv.style.background = '#fff3cd';
+        warningDiv.style.border = '1px solid #ffc107';
+        warningDiv.style.borderRadius = '6px';
+        warningDiv.style.marginBottom = '20px';
+        warningDiv.innerHTML = `<strong>⚠️ Warning:</strong> ${data.warning}`;
+        document.getElementById('forecastResults').insertBefore(warningDiv, document.getElementById('forecastResults').firstChild);
+    }
+    
+    // Display data source
+    document.getElementById('dataSource').textContent = `Data Source: ${data.data_source} (${data.data_points} records)`;
+    
+    // Display model comparison
+    const comparisonDiv = document.getElementById('modelComparison');
+    if (data.comparison && data.comparison.comparison) {
+        comparisonDiv.innerHTML = data.comparison.comparison.map(comp => `
+            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <strong>${comp.model}</strong>
+                    <span style="color: #667eea;">${comp.accuracy}</span>
+                </div>
+                <div style="color: #666;">Avg Forecast: ₹${comp.avg_forecast.toFixed(0)}</div>
+                <div style="color: #666;">Variance: ${comp.variance.toFixed(0)}</div>
+            </div>
+        `).join('');
+    }
+    
+    // Display seasonal insights
+    const seasonalDiv = document.getElementById('seasonalInsights');
+    if (data.seasonal_insights && data.seasonal_insights.seasonal_insights) {
+        seasonalDiv.innerHTML = data.seasonal_insights.seasonal_insights.map(insight => `
+            <div style="padding: 12px; border-radius: 6px; margin-bottom: 10px; 
+                ${insight.type === 'peak' ? 'background: #efe; border-left: 4px solid #3c3;' : 'background: #ffd; border-left: 4px solid #fc3;'}">
+                <strong>${insight.type === 'peak' ? '📈' : '📉'} Month ${insight.month}:</strong> ${insight.message}
+            </div>
+        `).join('');
+    } else {
+        seasonalDiv.innerHTML = '<p style="color: #666;">No seasonal data available yet.</p>';
+    }
+    
+    // Display forecast table
+    const tableDiv = document.getElementById('forecastTable');
+    if (data.forecasts && data.forecasts.length > 0) {
+        const bestForecast = data.forecasts[0];
+        tableDiv.innerHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 10px; text-align: left;">Date</th>
+                        <th style="padding: 10px; text-align: right;">Forecast</th>
+                        <th style="padding: 10px; text-align: right;">Lower Bound</th>
+                        <th style="padding: 10px; text-align: right;">Upper Bound</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${bestForecast.forecast.map(f => `
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 10px;">${new Date(f.ds).toLocaleDateString('en-IN')}</td>
+                            <td style="padding: 10px; text-align: right;">₹${f.yhat.toFixed(0)}</td>
+                            <td style="padding: 10px; text-align: right; color: #666;">₹${f.yhat_lower.toFixed(0)}</td>
+                            <td style="padding: 10px; text-align: right; color: #666;">₹${f.yhat_upper.toFixed(0)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    // Display forecast chart
+    if (data.forecasts && data.forecasts.length > 0) {
+        const bestForecast = data.forecasts[0];
+        
+        // Debug logging
+        console.log('Chart data:', bestForecast);
+        console.log('Forecast entries:', bestForecast.forecast.length);
+        
+        if (!bestForecast.forecast || bestForecast.forecast.length === 0) {
+            console.error('No forecast data available');
+            return;
+        }
+        
+        // Parse dates and values
+        const labels = bestForecast.forecast.map(f => {
+            const date = new Date(f.ds);
+            return isNaN(date.getTime()) ? f.ds : date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        });
+        
+        const forecastData = bestForecast.forecast.map(f => parseFloat(f.yhat) || 0);
+        const lowerBound = bestForecast.forecast.map(f => parseFloat(f.yhat_lower) || 0);
+        const upperBound = bestForecast.forecast.map(f => parseFloat(f.yhat_upper) || 0);
+        
+        console.log('Labels:', labels);
+        console.log('Forecast values:', forecastData);
+        
+        // Destroy existing chart
+        if (forecastChart) {
+            forecastChart.destroy();
+            forecastChart = null;
+        }
+        
+        // Get canvas context
+        const canvas = document.getElementById('forecastChart');
+        if (!canvas) {
+            console.error('Canvas element not found');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Create new chart
+        forecastChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Forecast',
+                    data: forecastData,
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }, {
+                    label: 'Upper Bound',
+                    data: upperBound,
+                    borderColor: 'rgba(240, 147, 251, 0.5)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    pointHoverRadius: 0
+                }, {
+                    label: 'Lower Bound',
+                    data: lowerBound,
+                    borderColor: 'rgba(240, 147, 251, 0.5)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    pointHoverRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ₹' + context.parsed.y.toFixed(0);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Revenue (₹)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        console.log('Chart created successfully');
+    } else {
+        console.error('No forecasts available');
+    }
+}
+</script>
+{% endblock %}

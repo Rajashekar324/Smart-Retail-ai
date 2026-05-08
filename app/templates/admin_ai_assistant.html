@@ -1,0 +1,800 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* ===== CSS VARIABLES ===== */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --primary-color: #667eea;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --bg-light: #f8fafc;
+        --bg-white: #ffffff;
+        --border-color: #e5e7eb;
+        --text-primary: #111827;
+        --text-secondary: #6b7280;
+        --text-muted: #9ca3af;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --radius-xl: 16px;
+        --spacing-xs: 4px;
+        --spacing-sm: 8px;
+        --spacing-md: 12px;
+        --spacing-lg: 16px;
+        --spacing-xl: 20px;
+        --spacing-2xl: 24px;
+        --spacing-3xl: 32px;
+    }
+
+    /* ===== PAGE CONTAINER ===== */
+    .ai-page {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 70px);
+        padding: var(--spacing-xl) var(--spacing-2xl);
+        box-sizing: border-box;
+    }
+
+    /* ===== HEADER SECTION ===== */
+    .ai-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: var(--spacing-lg);
+        margin-bottom: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .ai-header__title {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .ai-header__title-icon {
+        font-size: 28px;
+    }
+
+    .ai-status {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-lg);
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .ai-status--online {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .ai-status--offline {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .ai-status__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .ai-status--online .ai-status__dot {
+        background: var(--success-color);
+    }
+
+    .ai-status--offline .ai-status__dot {
+        background: var(--danger-color);
+    }
+
+    /* ===== MAIN LAYOUT GRID ===== */
+    .ai-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: var(--spacing-2xl);
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* ===== CHAT CONTAINER ===== */
+    .chat-section {
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-white);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--spacing-2xl);
+        background: linear-gradient(180deg, #f1f5f9 0%, var(--bg-white) 100%);
+    }
+
+    .chat-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        padding: var(--spacing-lg) var(--spacing-2xl);
+        background: var(--bg-white);
+        border-top: 1px solid var(--border-color);
+    }
+
+    .chat-input {
+        flex: 1;
+        height: 48px;
+        padding: 0 var(--spacing-lg);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        font-size: 14px;
+        color: var(--text-primary);
+        background: var(--bg-white);
+        transition: all 0.2s ease;
+    }
+
+    .chat-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .chat-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .chat-send-btn {
+        height: 48px;
+        padding: 0 var(--spacing-2xl);
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        border-radius: var(--radius-lg);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .chat-send-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .chat-send-btn:active {
+        transform: translateY(0);
+    }
+
+    /* ===== MESSAGES ===== */
+    .message {
+        display: flex;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-xl);
+        animation: messageIn 0.3s ease;
+    }
+
+    @keyframes messageIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .message--user {
+        flex-direction: row-reverse;
+    }
+
+    .message__avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .message__avatar--ai {
+        background: var(--primary-gradient);
+    }
+
+    .message__avatar--user {
+        background: #3b82f6;
+    }
+
+    .message__content {
+        max-width: 80%;
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-radius: var(--radius-lg);
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .message--user .message__content {
+        background: #3b82f6;
+        color: white;
+        border-bottom-right-radius: var(--radius-sm);
+    }
+
+    .message--ai .message__content {
+        background: var(--bg-white);
+        color: var(--text-primary);
+        box-shadow: var(--shadow-sm);
+        border-bottom-left-radius: var(--radius-sm);
+    }
+
+    .message__rag-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        margin-top: var(--spacing-sm);
+        font-size: 11px;
+        color: var(--primary-color);
+        font-weight: 500;
+    }
+
+    /* ===== WELCOME MESSAGE ===== */
+    .welcome-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-sm) var(--spacing-lg);
+        margin: var(--spacing-md) 0;
+    }
+
+    .welcome-item {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .welcome-item__icon {
+        font-size: 16px;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-lg);
+        overflow-y: auto;
+    }
+
+    .sidebar-card {
+        background: var(--bg-white);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .sidebar-card__header {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        margin: 0 0 var(--spacing-md) 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .sidebar-card__header-icon {
+        font-size: 16px;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .quick-action {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: #f3f4f6;
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .quick-action:hover {
+        background: #eef2ff;
+        border-color: var(--primary-color);
+        transform: translateX(4px);
+    }
+
+    .quick-action__icon {
+        font-size: 14px;
+    }
+
+    /* Agent Status */
+    .agent-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .agent-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: #f9fafb;
+        border-radius: var(--radius-sm);
+    }
+
+    .agent-item__name {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        font-size: 13px;
+        color: var(--text-primary);
+    }
+
+    .agent-item__icon {
+        font-size: 14px;
+    }
+
+    .agent-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .agent-indicator--online {
+        background: var(--success-color);
+    }
+
+    .agent-indicator--offline {
+        background: var(--danger-color);
+    }
+
+    /* Diagnostics Button */
+    .diagnostics-btn {
+        width: 100%;
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: #f3f4f6;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .diagnostics-btn:hover {
+        background: #e5e7eb;
+    }
+
+    .diagnostics-result {
+        margin-top: var(--spacing-md);
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    /* ===== TYPING INDICATOR ===== */
+    .typing {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        padding: var(--spacing-xs) 0;
+    }
+
+    .typing__dot {
+        width: 6px;
+        height: 6px;
+        background: var(--text-muted);
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite ease-in-out;
+    }
+
+    .typing__dot:nth-child(1) { animation-delay: 0s; }
+    .typing__dot:nth-child(2) { animation-delay: 0.16s; }
+    .typing__dot:nth-child(3) { animation-delay: 0.32s; }
+
+    @keyframes typingBounce {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-4px); }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+        .ai-layout {
+            grid-template-columns: 1fr;
+        }
+        .sidebar {
+            display: none;
+        }
+    }
+</style>
+
+<div class="ai-page">
+    <!-- Header -->
+    <header class="ai-header">
+        <h1 class="ai-header__title">
+            <span class="ai-header__title-icon">🧠</span>
+            AI Assistant
+        </h1>
+        {% if ai_available %}
+        <span class="ai-status ai-status--online">
+            <span class="ai-status__dot"></span>
+            AI Online
+        </span>
+        {% else %}
+        <span class="ai-status ai-status--offline">
+            <span class="ai-status__dot"></span>
+            AI Offline
+        </span>
+        {% endif %}
+    </header>
+
+    <!-- Main Layout -->
+    <div class="ai-layout">
+        <!-- Chat Section -->
+        <section class="chat-section">
+            <div id="chatMessages" class="chat-messages">
+                <!-- Welcome Message -->
+                <div class="message message--ai">
+                    <div class="message__avatar message__avatar--ai">AI</div>
+                    <div class="message__content">
+                        <p style="margin: 0 0 8px 0; font-weight: 600;">Hello! I'm your AI Assistant</p>
+                        <p style="margin: 0 0 12px 0; color: #6b7280;">I can help you with:</p>
+                        <div class="welcome-grid">
+                            <div class="welcome-item">
+                                <span class="welcome-item__icon">📦</span>
+                                <span>Inventory analysis</span>
+                            </div>
+                            <div class="welcome-item">
+                                <span class="welcome-item__icon">📊</span>
+                                <span>Sales trends</span>
+                            </div>
+                            <div class="welcome-item">
+                                <span class="welcome-item__icon">🔮</span>
+                                <span>Demand forecasting</span>
+                            </div>
+                            <div class="welcome-item">
+                                <span class="welcome-item__icon">📄</span>
+                                <span>Document Q&A</span>
+                            </div>
+                        </div>
+                        <p style="margin: 12px 0 0 0; font-size: 13px; color: #9ca3af;">What would you like to know?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="chat-input-wrapper">
+                <input
+                    type="text"
+                    id="chatInput"
+                    class="chat-input"
+                    placeholder="Ask me anything about your store..."
+                    onkeypress="if(event.key==='Enter')sendMessage()"
+                >
+                <button onclick="sendMessage()" class="chat-send-btn">
+                    Send
+                </button>
+            </div>
+        </section>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Quick Actions -->
+            <div class="sidebar-card">
+                <h3 class="sidebar-card__header">
+                    <span class="sidebar-card__header-icon">⚡</span>
+                    Quick Actions
+                </h3>
+                <div class="quick-actions">
+                    <button onclick="quickAsk('Show me inventory status')" class="quick-action">
+                        <span class="quick-action__icon">📦</span>
+                        <span>Inventory Status</span>
+                    </button>
+                    <button onclick="quickAsk('What are my top selling products?')" class="quick-action">
+                        <span class="quick-action__icon">📊</span>
+                        <span>Top Products</span>
+                    </button>
+                    <button onclick="quickAsk('Predict sales for next month')" class="quick-action">
+                        <span class="quick-action__icon">🔮</span>
+                        <span>Sales Forecast</span>
+                    </button>
+                    <button onclick="quickAsk('Which products need reordering?')" class="quick-action">
+                        <span class="quick-action__icon">🔄</span>
+                        <span>Reorder Recommendations</span>
+                    </button>
+                    <button onclick="quickAsk('Show warehouse analytics')" class="quick-action">
+                        <span class="quick-action__icon">🏭</span>
+                        <span>Warehouse Analytics</span>
+                    </button>
+                    <button onclick="quickAsk('Analyze customer segments')" class="quick-action">
+                        <span class="quick-action__icon">👥</span>
+                        <span>Customer Segments</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Agent Status -->
+            <div class="sidebar-card">
+                <h3 class="sidebar-card__header">
+                    <span class="sidebar-card__header-icon">🤖</span>
+                    Agent Status
+                </h3>
+                <div id="agentStatus" class="agent-list">
+                    <div class="agent-item">
+                        <span class="agent-item__name">
+                            <span class="agent-item__icon">📦</span>
+                            Inventory
+                        </span>
+                        <span class="agent-indicator agent-indicator--offline"></span>
+                    </div>
+                    <div class="agent-item">
+                        <span class="agent-item__name">
+                            <span class="agent-item__icon">📊</span>
+                            Retail Analyst
+                        </span>
+                        <span class="agent-indicator agent-indicator--offline"></span>
+                    </div>
+                    <div class="agent-item">
+                        <span class="agent-item__name">
+                            <span class="agent-item__icon">🔮</span>
+                            ML Insights
+                        </span>
+                        <span class="agent-indicator agent-indicator--offline"></span>
+                    </div>
+                    <div class="agent-item">
+                        <span class="agent-item__name">
+                            <span class="agent-item__icon">📄</span>
+                            Document
+                        </span>
+                        <span class="agent-indicator agent-indicator--offline"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnostics -->
+            <div class="sidebar-card">
+                <h3 class="sidebar-card__header">
+                    <span class="sidebar-card__header-icon">🔍</span>
+                    Diagnostics
+                </h3>
+                <button onclick="runHealthCheck()" class="diagnostics-btn">
+                    Run AI Health Check
+                </button>
+                <div id="healthCheckResult" class="diagnostics-result"></div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+let isProcessing = false;
+
+function addMessage(text, isUser = false, metadata = {}) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message--${isUser ? 'user' : 'ai'}`;
+
+    const avatarText = isUser ? 'You' : 'AI';
+    const avatarClass = isUser ? 'message__avatar--user' : 'message__avatar--ai';
+
+    const metaHtml = metadata.rag_enhanced ?
+        '<span class="message__rag-badge">🧠 RAG Enhanced</span>' : '';
+
+    messageDiv.innerHTML = `
+        <div class="message__avatar ${avatarClass}">${avatarText}</div>
+        <div class="message__content">
+            ${text}
+            ${metaHtml}
+        </div>
+    `;
+
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typingIndicator';
+    typingDiv.className = 'message message--ai';
+    typingDiv.innerHTML = `
+        <div class="message__avatar message__avatar--ai">AI</div>
+        <div class="message__content">
+            <div class="typing">
+                <span class="typing__dot"></span>
+                <span class="typing__dot"></span>
+                <span class="typing__dot"></span>
+            </div>
+        </div>
+    `;
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) indicator.remove();
+}
+
+async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text || isProcessing) return;
+    
+    isProcessing = true;
+    chatInput.value = '';
+    
+    addMessage(text, true);
+    addTypingIndicator();
+    
+    try {
+        const response = await fetch('/api/admin/ai-assistant/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, context: {} })
+        });
+        
+        const data = await response.json();
+        removeTypingIndicator();
+        
+        if (data.success) {
+            addMessage(data.response, false, { rag_enhanced: data.rag_enhanced });
+        } else {
+            // Show specific error messages
+            let errorMsg = data.error || 'Unknown error';
+            let detailedMsg = '';
+            
+            if (data.error_type === 'quota_exceeded') {
+                detailedMsg = `\n\n💡 To fix this:\n1. Go to https://platform.openai.com/account/billing\n2. Add a payment method or purchase credits\n3. Or use a different API key with available credits`;
+            } else if (data.error_type === 'authentication') {
+                detailedMsg = `\n\n💡 Check that OPENAI_API_KEY is set correctly in your .env file`;
+            }
+            
+            addMessage('❌ Error: ' + errorMsg + detailedMsg, false);
+        }
+    } catch (error) {
+        removeTypingIndicator();
+        console.error('Chat error:', error);
+        addMessage('❌ Connection Error: Unable to reach AI service.\n\nPossible causes:\n• Server is restarting\n• Network connection issue\n• API endpoint not found\n\nPlease check console for details.', false);
+    } finally {
+        isProcessing = false;
+    }
+}
+
+function quickAsk(question) {
+    chatInput.value = question;
+    sendMessage();
+}
+
+async function loadAgentStatus() {
+    try {
+        const response = await fetch('/api/admin/agents/status');
+        const data = await response.json();
+
+        const statusDiv = document.getElementById('agentStatus');
+        if (data.agents) {
+            const agentIcons = {
+                'inventory': '📦',
+                'retail_analyst': '📊',
+                'ml_insights': '🔮',
+                'document_intelligence': '📄'
+            };
+
+            const agentNames = {
+                'inventory': 'Inventory',
+                'retail_analyst': 'Retail Analyst',
+                'ml_insights': 'ML Insights',
+                'document_intelligence': 'Document'
+            };
+
+            statusDiv.innerHTML = `
+                <div class="agent-list">
+                    ${Object.entries(data.agents).map(([name, agent]) => {
+                        const isOnline = agent.status === 'active' || agent.status === 'idle';
+                        return `
+                            <div class="agent-item">
+                                <span class="agent-item__name">
+                                    <span class="agent-item__icon">${agentIcons[name] || '🤖'}</span>
+                                    ${agentNames[name] || name}
+                                </span>
+                                <span class="agent-indicator ${isOnline ? 'agent-indicator--online' : 'agent-indicator--offline'}"></span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('agentStatus').innerHTML = '<div style="color: #dc2626; font-size: 12px;">⚠️ Unable to load agent status</div>';
+    }
+}
+
+async function runHealthCheck() {
+    const resultDiv = document.getElementById('healthCheckResult');
+    resultDiv.innerHTML = '<span style="color: #666;">Running diagnostics...</span>';
+    
+    try {
+        const response = await fetch('/api/admin/ai-health');
+        const data = await response.json();
+        
+        let html = '<div style="background: #f8fafc; padding: 10px; border-radius: 6px;">';
+        
+        // LLM Service
+        const llm = data.services?.llm_service;
+        if (llm) {
+            if (llm.available) {
+                html += '<div style="color: #059669; margin-bottom: 4px;">✅ LLM Service: Online</div>';
+                html += `<div style="color: #666; font-size: 10px;">Model: ${llm.model}</div>`;
+            } else {
+                html += '<div style="color: #dc2626; margin-bottom: 4px;">❌ LLM Service: Offline</div>';
+                if (!llm.api_key_configured) {
+                    html += '<div style="color: #dc2626; font-size: 10px;">⚠️ API Key not configured</div>';
+                }
+            }
+        } else {
+            html += '<div style="color: #dc2626;">❌ LLM Service: Not Initialized</div>';
+        }
+        
+        // Vector Store
+        const vs = data.services?.vectorstore;
+        if (vs?.available) {
+            html += '<div style="color: #059669; margin-top: 4px;">✅ Vector Store: Online</div>';
+        } else {
+            html += '<div style="color: #dc2626; margin-top: 4px;">❌ Vector Store: Offline</div>';
+        }
+        
+        // Agents
+        const agents = data.services?.agents;
+        if (agents?.agents) {
+            const active = Object.values(agents.agents).filter(a => a.status === 'active' || a.status === 'idle').length;
+            html += `<div style="color: ${active > 0 ? '#059669' : '#dc2626'}; margin-top: 4px;">${active > 0 ? '✅' : '❌'} Agents: ${active}/${Object.keys(agents.agents).length} online</div>`;
+        }
+        
+        html += '</div>';
+        resultDiv.innerHTML = html;
+        
+    } catch (error) {
+        resultDiv.innerHTML = '<span style="color: #dc2626;">❌ Health check failed. Check console.</span>';
+        console.error('Health check error:', error);
+    }
+}
+
+// Load agent status on page load
+loadAgentStatus();
+
+// Add bounce animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

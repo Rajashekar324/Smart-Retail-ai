@@ -1,0 +1,6 @@
+tree 41e07f7b3786a294fdc1e2b926658a211b77275b
+parent 720735f62c889fe4dcf97113e432ba25f5903099
+author rajashekar <rajashekarr324@gmail.com> 1778228489 +0530
+committer rajashekar <rajashekarr324@gmail.com> 1778228489 +0530
+
+Fix ticket raising and visual search functionality

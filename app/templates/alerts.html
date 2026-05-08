@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin-top: 50px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h1>🔔 Your Alerts</h1>
+        <button onclick="markAllRead()" class="btn btn-outline">Mark All as Read</button>
+    </div>
+    
+    {% if alerts %}
+    <div style="display: grid; gap: 15px;">
+        {% for alert in alerts %}
+        <div style="padding: 20px; border-radius: 8px; border-left: 4px solid; 
+            {% if alert.priority == 'high' %}background :  #fee; border-color: #c33;{% elif alert.priority == 'medium' %}background: #ffd; border-color: #fc3;{% else %}background: #efe; border-color: #3c3;{% endif %}
+            {% if not alert.is_read %}border-left-width: 4px;{% else %}border-left-width: 2px; opacity: 0.7;{% endif %}">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <strong style="font-size: 18px;">{{ alert.title }}</strong>
+                        {% if not alert.is_read %}
+                        <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px;">New</span>
+                        {% endif %}
+                        <span style="color: #666; font-size: 12px;">
+                            {% if alert.alert_type == 'stock' %}📦 Stock{% elif alert.alert_type == 'price_drop' %}💰 Price Drop{% elif alert.alert_type == 'recommendation' %}💡 Recommendation{% elif alert.alert_type == 'order' %}📋 Order{% endif %}
+                        </span>
+                    </div>
+                    <p style="margin: 0 0 10px 0; color: #333;">{{ alert.message }}</p>
+                    <div style="color: #666; font-size: 12px;">
+                        {{ alert.created_at[:10] if alert.created_at else '' }}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: start;">
+                    {% if alert.action_url %}
+                    <a href="{{ alert.action_url }}" class="btn" style="padding: 6px 12px; font-size: 14px;">View</a>
+                    {% endif %}
+                    {% if not alert.is_read %}
+                    <button onclick="markRead({{ alert.id }})" class="btn btn-outline" style="padding: 6px 12px; font-size: 14px;">Mark Read</button>
+                    {% endif %}
+                    <button onclick="deleteAlert({{ alert.id }})" style="background: none; border: none; color: #999; cursor: pointer; font-size: 18px;">×</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="glass-card" style="text-align: center; padding: 40px;">
+        <p style="font-size: 18px; color: #666;">No alerts yet</p>
+        <p style="color: #999;">We'll notify you about stock availability, price drops, and order updates.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+async function markRead(alertId) {
+    try {
+        const response = await fetch(`/api/alerts/${alertId}/read`, { method: 'POST' });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error marking as read:', error);
+    }
+}
+
+async function markAllRead() {
+    try {
+        const response = await fetch('/api/alerts/read-all', { method: 'POST' });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error marking all as read:', error);
+    }
+}
+
+async function deleteAlert(alertId) {
+    if (!confirm('Delete this alert?')) return;
+    
+    try {
+        const response = await fetch(`/api/alerts/${alertId}`, { method: 'DELETE' });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error deleting alert:', error);
+    }
+}
+</script>
+{% endblock %}

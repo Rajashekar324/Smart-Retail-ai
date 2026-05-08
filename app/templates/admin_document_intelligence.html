@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">📑 Document Intelligence Panel</h1>
+    
+    <!-- Upload Section -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">📤 Upload Document</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select File</label>
+                <input type="file" id="documentFile" accept=".pdf,.png,.jpg,.jpeg,.tiff" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Document Type</label>
+                <select id="documentType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="">Select type...</option>
+                    <option value="invoice">Invoice</option>
+                    <option value="manual">Product Manual</option>
+                    <option value="policy">Policy Document</option>
+                    <option value="report">Report</option>
+                    <option value="receipt">Receipt</option>
+                    <option value="id_document">ID Document</option>
+                </select>
+            </div>
+            <div></div>
+            <button onclick="uploadDocument()" class="btn" style="padding: 12px 20px;">Upload & Process</button>
+        </div>
+        <div id="uploadProgress" style="margin-top: 15px; display: none;">
+            <div style="padding: 10px; background: #f5f5f5; border-radius: 6px;">
+                <p style="color: #666;">Uploading and processing...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search Section -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">🔍 Search Documents</h2>
+        <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; align-items: end;">
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Search Query</label>
+                <input type="text" id="searchQuery" placeholder="Enter search terms..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Document Type</label>
+                <select id="searchDocType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="">All Types</option>
+                    <option value="invoice">Invoice</option>
+                    <option value="manual">Manual</option>
+                    <option value="policy">Policy</option>
+                    <option value="report">Report</option>
+                </select>
+            </div>
+            <button onclick="searchDocuments()" class="btn" style="padding: 12px 20px;">Search</button>
+        </div>
+        <div id="searchResults" style="margin-top: 20px;"></div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+        <!-- Documents List -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📄 All Documents</h2>
+            <div id="documentsList" style="max-height: 600px; overflow-y: auto;">
+                <p style="color: #666;">Loading...</p>
+            </div>
+        </div>
+        
+        <!-- Document Preview -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📖 Document Preview</h2>
+            <div id="documentPreview">
+                <p style="color: #666;">Select a document to view details...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function uploadDocument() {
+    const fileInput = document.getElementById('documentFile');
+    const docType = document.getElementById('documentType').value;
+    
+    if (!fileInput.files[0] || !docType) {
+        alert('Please select a file and document type');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('document_type', docType);
+    
+    document.getElementById('uploadProgress').style.display = 'block';
+    
+    try {
+        // Upload
+        const uploadResponse = await fetch('/api/admin/documents/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const uploadResult = await uploadResponse.json();
+        
+        if (uploadResult.document_id) {
+            // Process
+            const processResponse = await fetch(`/api/admin/documents/${uploadResult.document_id}/process`, {
+                method: 'POST'
+            });
+            
+            const processResult = await processResponse.json();
+            
+            alert(`Document processed! Status: ${processResult.ocr?.status || 'unknown'}`);
+            loadDocuments();
+        } else {
+            alert('Upload failed: ' + (uploadResult.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error: ' + error);
+    } finally {
+        document.getElementById('uploadProgress').style.display = 'none';
+        fileInput.value = '';
+    }
+}
+
+async function loadDocuments() {
+    try {
+        const response = await fetch('/api/admin/documents');
+        const data = await response.json();
+        
+        const container = document.getElementById('documentsList');
+        if (data.documents && data.documents.length > 0) {
+            container.innerHTML = data.documents.map(d => `
+                <div style="padding: 15px; border-bottom: 1px solid #ddd; cursor: pointer; ${d.status === 'indexed' ? 'border-left: 3px solid #1dd1a1;' : d.status === 'error' ? 'border-left: 3px solid #ff6b6b;' : 'border-left: 3px solid #feca57;'}"
+                     onclick="viewDocument('${d.document_id}')">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <strong>${d.filename}</strong>
+                            <div style="color: #666; font-size: 14px; text-transform: capitalize;">${d.document_type}</div>
+                        </div>
+                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; 
+                            ${d.status === 'indexed' ? 'background: #efe; color: #3c3;' : 
+                              d.status === 'error' ? 'background: #fee; color: #c33;' : 
+                              'background: #ffd; color: #960;'}">${d.status}</span>
+                    </div>
+                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
+                        ${new Date(d.created_at).toLocaleString()} | ${(d.file_size / 1024).toFixed(1)} KB
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p style="color: #666; padding: 20px;">No documents uploaded yet</p>';
+        }
+    } catch (error) {
+        console.error('Error loading documents:', error);
+    }
+}
+
+async function viewDocument(docId) {
+    try {
+        const response = await fetch(`/api/admin/documents/${docId}`);
+        const doc = await response.json();
+        
+        const preview = document.getElementById('documentPreview');
+        preview.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 10px;">${doc.filename}</h3>
+                <div style="color: #666; font-size: 14px;">Type: ${doc.document_type}</div>
+                <div style="color: #666; font-size: 14px;">Status: ${doc.status}</div>
+                <div style="color: #666; font-size: 14px;">Size: ${(doc.file_size / 1024).toFixed(1)} KB</div>
+            </div>
+            
+            ${doc.ocr_text_preview ? `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">OCR Text Preview</h4>
+                    <div style="padding: 15px; background: #f5f5f5; border-radius: 6px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto;">
+                        ${doc.ocr_text_preview.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            ` : ''}
+            
+            ${doc.extracted_data ? `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">Extracted Data</h4>
+                    <pre style="padding: 15px; background: #f5f5f5; border-radius: 6px; font-size: 12px; overflow-x: auto;">${JSON.stringify(doc.extracted_data, null, 2)}</pre>
+                </div>
+            ` : ''}
+            
+            ${doc.error_message ? `
+                <div style="padding: 15px; background: #fee; border-radius: 6px; color: #c33;">
+                    <strong>Error:</strong> ${doc.error_message}
+                </div>
+            ` : ''}
+            
+            <button onclick="deleteDocument('${docId}')" class="btn" style="background: #ff6b6b; width: 100%; margin-top: 20px;">Delete Document</button>
+        `;
+    } catch (error) {
+        document.getElementById('documentPreview').innerHTML = `<p style="color: #c33;">Error loading document</p>`;
+    }
+}
+
+async function deleteDocument(docId) {
+    if (!confirm('Delete this document?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/documents/${docId}`, { method: 'DELETE' });
+        if (response.ok) {
+            document.getElementById('documentPreview').innerHTML = '<p style="color: #666;">Document deleted</p>';
+            loadDocuments();
+        }
+    } catch (error) {
+        alert('Error deleting document');
+    }
+}
+
+async function searchDocuments() {
+    const query = document.getElementById('searchQuery').value;
+    const docType = document.getElementById('searchDocType').value;
+    
+    if (!query) {
+        alert('Please enter a search query');
+        return;
+    }
+    
+    const resultsDiv = document.getElementById('searchResults');
+    resultsDiv.innerHTML = '<p style="color: #666;">Searching...</p>';
+    
+    try {
+        const url = `/api/admin/documents/search?query=${encodeURIComponent(query)}${docType ? '&document_type=' + docType : ''}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+            resultsDiv.innerHTML = `
+                <h3 style="margin-bottom: 15px;">${data.results.length} Results Found</h3>
+                <div style="display: grid; gap: 10px;">
+                    ${data.results.map(r => `
+                        <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;" onclick="viewDocument('${r.document_id}')">
+                            <div style="display: flex; justify-content: space-between;">
+                                <strong>${r.filename}</strong>
+                                <span style="color: #999; font-size: 12px;">Score: ${r.score ? r.score.toFixed(2) : 'N/A'}</span>
+                            </div>
+                            <div style="color: #666; font-size: 14px;">${r.document_type}</div>
+                            ${r.highlights && r.highlights.content ? `
+                                <div style="margin-top: 8px; padding: 8px; background: #fffde7; border-radius: 4px; font-size: 13px;">
+                                    ${r.highlights.content.join(' ... ')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            resultsDiv.innerHTML = '<p style="color: #666;">No results found</p>';
+        }
+    } catch (error) {
+        resultsDiv.innerHTML = `<p style="color: #c33;">Error searching</p>`;
+    }
+}
+
+// Load documents on page load
+loadDocuments();
+</script>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">📄 Document Search</h1>
+    
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">Search Documents</h2>
+        
+        <div style="display: grid; gap: 20px; grid-template-columns: 2fr 1fr;">
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Search Query</label>
+                <input type="text" id="searchQuery" placeholder="e.g., return policy, product manual, refund process" 
+                       style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Document Type</label>
+                <select id="docType" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;">
+                    <option value="all">All Documents</option>
+                    <option value="manual">Product Manuals</option>
+                    <option value="policy">Policies</option>
+                </select>
+            </div>
+        </div>
+        
+        <button onclick="searchDocuments()" class="btn" style="margin-top: 20px; width: 100%; padding: 12px;">
+            Search Documents
+        </button>
+    </div>
+    
+    <div id="searchResults" style="display: none;">
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">Search Results</h2>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+    
+    <div class="glass-card" style="margin-top: 30px;">
+        <h2 style="margin-bottom: 20px;">Available Documents</h2>
+        <div id="documentList">
+            <p style="color: #666;">Loading documents...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+async function searchDocuments() {
+    const query = document.getElementById('searchQuery').value;
+    const docType = document.getElementById('docType').value;
+    
+    if (!query) {
+        alert('Please enter a search query');
+        return;
+    }
+    
+    const resultsDiv = document.getElementById('searchResults');
+    const contentDiv = document.getElementById('resultsContent');
+    
+    contentDiv.innerHTML = '<p style="color: #666;">Searching...</p>';
+    resultsDiv.style.display = 'block';
+    
+    try {
+        const response = await fetch(`/api/documents/search?query=${encodeURIComponent(query)}&doc_type=${docType}`);
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+            contentDiv.innerHTML = data.results.map(result => `
+                <div style="padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; background: #f9f9f9;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <strong>${result.title}</strong>
+                        <span style="color: #666; font-size: 14px;">Similarity: ${(result.similarity * 100).toFixed(1)}%</span>
+                    </div>
+                    <p style="color: #333; margin-bottom: 10px;">${result.text}</p>
+                    <div style="color: #666; font-size: 12px;">Document ID: ${result.doc_id} | Chunk: ${result.chunk_index}</div>
+                </div>
+            `).join('');
+        } else {
+            contentDiv.innerHTML = '<p style="color: #666;">No results found. Try a different query.</p>';
+        }
+    } catch (error) {
+        contentDiv.innerHTML = '<p style="color: #c33;">Error searching documents. Please try again.</p>';
+    }
+}
+
+async function loadDocuments() {
+    const listDiv = document.getElementById('documentList');
+    
+    try {
+        const response = await fetch('/api/documents/list');
+        const data = await response.json();
+        
+        if (data.documents && data.documents.length > 0) {
+            listDiv.innerHTML = data.documents.map(doc => `
+                <div style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${doc.title}</strong>
+                        <div style="color: #666; font-size: 14px;">ID: ${doc.doc_id}</div>
+                    </div>
+                    <span style="color: #666; font-size: 14px;">${doc.total_chunks} chunks</span>
+                </div>
+            `).join('');
+        } else {
+            listDiv.innerHTML = '<p style="color: #666;">No documents indexed yet. Contact admin to add documents.</p>';
+        }
+    } catch (error) {
+        listDiv.innerHTML = '<p style="color: #c33;">Error loading documents.</p>';
+    }
+}
+
+// Load documents on page load
+loadDocuments();
+</script>
+{% endblock %}

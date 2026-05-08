@@ -1,0 +1,16 @@
+id,user_id,action,entity_type,entity_id,old_values,new_values,ip_address,user_agent,created_at
+1,1,user_created,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292505""}",127.0.0.1,,2026-05-07 04:38:22.292528
+2,1,product_updated,product,SH-TS-001,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292665""}",127.0.0.1,,2026-05-05 04:38:22.292673
+3,1,order_status_changed,order,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292720""}",127.0.0.1,,2026-05-03 04:38:22.292726
+4,1,login_success,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292756""}",127.0.0.1,,2026-05-01 04:38:22.292769
+5,1,password_changed,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292799""}",127.0.0.1,,2026-04-29 04:38:22.292805
+6,1,user_created,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292829""}",127.0.0.1,,2026-04-27 04:38:22.292834
+7,1,product_updated,product,SH-TS-001,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292857""}",127.0.0.1,,2026-04-25 04:38:22.292861
+8,1,order_status_changed,order,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292887""}",127.0.0.1,,2026-04-23 04:38:22.292892
+9,1,login_success,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292916""}",127.0.0.1,,2026-04-21 04:38:22.292921
+10,1,password_changed,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292944""}",127.0.0.1,,2026-04-19 04:38:22.292949
+11,1,user_created,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.292972""}",127.0.0.1,,2026-04-17 04:38:22.292977
+12,1,product_updated,product,SH-TS-001,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.293000""}",127.0.0.1,,2026-04-15 04:38:22.293005
+13,1,order_status_changed,order,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.293084""}",127.0.0.1,,2026-04-13 04:38:22.293091
+14,1,login_success,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.293115""}",127.0.0.1,,2026-04-11 04:38:22.293120
+15,1,password_changed,user,1,,"{""status"": ""completed"", ""timestamp"": ""2026-05-07T04:38:22.293145""}",127.0.0.1,,2026-04-09 04:38:22.293149

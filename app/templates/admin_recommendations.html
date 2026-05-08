@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1400px; margin-top: 50px;">
+    <h1 style="margin-bottom: 20px;">✨ AI-Powered Recommendations</h1>
+    
+    <!-- AI Status & Controls -->
+    <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            {% if ai_available %}
+            <span id="aiStatusBadge" style="background: #d1fae5; color: #059669; padding: 8px 16px; border-radius: 20px; font-size: 14px;">
+                🟢 AI Online - Real-time insights enabled
+            </span>
+            {% else %}
+            <span id="aiStatusBadge" style="background: #fee2e2; color: #dc2626; padding: 8px 16px; border-radius: 20px; font-size: 14px;">
+                🔴 AI Offline - Configure OPENAI_API_KEY for AI insights
+            </span>
+            {% endif %}
+            <span id="liveIndicator" style="margin-left: 10px; font-size: 12px; color: #666; display: none;">
+                <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite; margin-right: 5px;"></span>
+                Live Updates On
+            </span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="btn" style="font-size: 12px; padding: 6px 12px; background: #0b68f5d3;">
+                🔄 Auto-Refresh: OFF
+            </button>
+            <button onclick="refreshCurrent()" class="btn btn-primary" style="font-size: 12px; padding: 6px 16px;">
+                🔄 Refresh Now
+            </button>
+        </div>
+    </div>
+
+    <!-- Recommendation Type Tabs -->
+    <div style="display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb;">
+        <button onclick="loadRecommendations('products')" id="tab-products" class="btn" style="border-bottom: 3px solid #667eea; border-radius: 0; background: transparent;">
+            🏆 Top Products to Promote
+        </button>
+        <button onclick="loadRecommendations('inventory')" id="tab-inventory" class="btn" style="border-radius: 0; background: transparent; color: #666;">
+            📦 Inventory Reorder
+        </button>
+        <button onclick="loadRecommendations('pricing')" id="tab-pricing" class="btn" style="border-radius: 0; background: transparent; color: #666;">
+            💰 Pricing Optimization
+        </button>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" style="display: none; text-align: center; padding: 40px;">
+        <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="color: #666; margin-top: 15px;">AI is analyzing your data...</p>
+    </div>
+
+    <!-- Results Container -->
+    <div id="recommendationsContainer" style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+        <!-- Recommendations List -->
+        <div class="glass-card" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #f0f0f0;">
+                <h2 id="recTitle" style="margin: 0; font-size: 20px; color: #333;">Top Product Recommendations</h2>
+                <span id="recCount" style="background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">0</span>
+            </div>
+            <div id="recommendationsList" style="min-height: 200px;">
+                <p style="color: #666; text-align: center; padding: 40px;">Click a tab above to generate AI recommendations</p>
+            </div>
+        </div>
+        
+        <!-- AI Insights Panel -->
+        <div class="glass-card" style="background: linear-gradient(135deg, #667eea15, #764ba215); border-radius: 16px; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 2px solid #667eea30;">
+                <h3 style="margin: 0; color: #667eea; font-size: 18px;">🧠 AI Insights</h3>
+                <span id="lastUpdated" style="font-size: 11px; color: #999; background: #f3f4f6; padding: 4px 10px; border-radius: 12px;"></span>
+            </div>
+            <div id="aiInsights" style="font-size: 14px; line-height: 1.7; color: #374151; max-height: 300px; overflow-y: auto; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 12px;">
+                <p style="color: #666; font-style: italic;">Select a recommendation type to see AI-powered insights and strategic recommendations.</p>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.6); border-radius: 12px; border-left: 4px solid #667eea;">
+                <h4 style="font-size: 13px; color: #667eea; margin: 0 0 10px 0; font-weight: 600;">📊 Stats</h4>
+                <div id="statsContainer" style="font-size: 12px; color: #999;">
+                    No data yet
+                </div>
+                <div id="processingInfo" style="margin-top: 10px; font-size: 11px; color: #667eea; display: none;">
+                    ⚡ Processing with AI agents...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="glass-card" style="margin-top: 30px;">
+        <h3 style="margin-bottom: 15px;">⚡ Quick Actions</h3>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <a href="/admin/products" class="btn" style="background: #dbeafe; color: #1d4ed8;">Manage Products</a>
+            <a href="/admin/inventory" class="btn" style="background: #d1fae5; color: #059669;">View Inventory</a>
+            <a href="/admin/forecast" class="btn" style="background: #fef3c7; color: #d97706;">Demand Forecast</a>
+            <a href="/admin/agents" class="btn" style="background: #e0e7ff; color: #4f46e5;">Multi-Agent Center</a>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentType = 'products';
+
+async function loadRecommendations(type) {
+    currentType = type;
+    
+    // Update tabs
+    document.querySelectorAll('[id^="tab-"]').forEach(tab => {
+        tab.style.borderBottom = 'none';
+        tab.style.color = '#666';
+    });
+    document.getElementById(`tab-${type}`).style.borderBottom = '3px solid #667eea';
+    document.getElementById(`tab-${type}`).style.color = 'inherit';
+    
+    // Show loading and processing indicators
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('processingInfo').style.display = 'block';
+    document.getElementById('recommendationsList').innerHTML = '';
+    document.getElementById('aiInsights').innerHTML = '<p style="color: #667eea;">🧠 AI agents are analyzing your data in real-time...</p>';
+    
+    try {
+        const response = await fetch('/api/admin/recommendations/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type, params: {} })
+        });
+        
+        const data = await response.json();
+        
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (data.success) {
+            renderRecommendations(data);
+        } else {
+            document.getElementById('recommendationsList').innerHTML = `
+                <p style="color: #dc2626; text-align: center; padding: 40px;">
+                    Error: ${data.error || 'Failed to generate recommendations'}
+                </p>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        document.getElementById('recommendationsList').innerHTML = `
+            <p style="color: #dc2626; text-align: center; padding: 40px;">
+                Failed to connect to AI service. Please try again.
+            </p>
+        `;
+    }
+}
+
+function renderRecommendations(data) {
+    const list = document.getElementById('recommendationsList');
+    const type = data.type;
+    
+    // Update title and count
+    const titles = {
+        products: '🏆 Top Products to Promote',
+        inventory: '📦 Inventory Reorder Recommendations',
+        pricing: '💰 Pricing Optimization Opportunities'
+    };
+    document.getElementById('recTitle').textContent = titles[type] || 'Recommendations';
+    document.getElementById('recCount').textContent = data.total || 0;
+    
+    if (!data.recommendations || data.recommendations.length === 0) {
+        list.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No recommendations available at this time.</p>';
+    } else {
+        let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+        
+        data.recommendations.forEach((rec, index) => {
+            const priorityColor = rec.priority === 'high' ? '#dc2626' : rec.priority === 'medium' ? '#d97706' : '#059669';
+            const priorityBg = rec.priority === 'high' ? '#fee2e2' : rec.priority === 'medium' ? '#fef3c7' : '#d1fae5';
+            
+            html += `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid ${priorityColor};">
+                    <div style="font-size: 24px; font-weight: bold; color: #e5e7eb;">${index + 1}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${rec.title}</div>
+                        <div style="font-size: 13px; color: #666;">${rec.reason || rec.category || ''}</div>
+                        ${rec.price ? `<div style="font-size: 14px; color: #667eea; margin-top: 4px;">$${rec.price.toFixed(2)}</div>` : ''}
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="display: inline-block; padding: 4px 12px; background: ${priorityBg}; color: ${priorityColor}; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                            ${rec.action}
+                        </span>
+                        ${rec.performance_score ? `<div style="font-size: 12px; color: #999; margin-top: 4px;">Score: ${rec.performance_score.toFixed(1)}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        list.innerHTML = html;
+    }
+    
+    // Update AI insights
+    document.getElementById('aiInsights').innerHTML = `
+        <div style="white-space: pre-wrap;">${data.ai_insights || 'AI insights not available'}</div>
+    `;
+    
+    // Update last updated timestamp
+    document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    
+    // Update stats
+    const isRealtime = data.ai_insights && data.ai_insights !== 'AI insights not available';
+    document.getElementById('statsContainer').innerHTML = `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>Total Recommendations:</span>
+            <strong style="color: #667eea;">${data.total || 0}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #999;">
+            <span>Data Generated:</span>
+            <span>${new Date(data.generated_at).toLocaleString()}</span>
+        </div>
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+            <span style="font-size: 11px; ${isRealtime ? 'color: #059669;' : 'color: #999;'}">
+                ${isRealtime ? '✅ AI-powered insights active' : '⚠️ AI insights offline'}
+            </span>
+        </div>
+    `;
+    
+    // Hide processing indicator
+    document.getElementById('processingInfo').style.display = 'none';
+}
+
+// Add spin animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+
+// Auto-refresh settings
+let autoRefreshInterval = null;
+let isAutoRefreshOn = false;
+let lastData = null;
+
+function toggleAutoRefresh() {
+    isAutoRefreshOn = !isAutoRefreshOn;
+    const btn = document.getElementById('autoRefreshBtn');
+    const indicator = document.getElementById('liveIndicator');
+    
+    if (isAutoRefreshOn) {
+        btn.textContent = '🔄 Auto-Refresh: ON';
+        btn.style.background = '#d1fae5';
+        btn.style.color = '#059669';
+        indicator.style.display = 'inline';
+        
+        // Refresh every 60 seconds
+        autoRefreshInterval = setInterval(() => {
+            refreshCurrent();
+        }, 60000);
+        
+        showNotification('Auto-refresh enabled (60s interval)', 'success');
+    } else {
+        btn.textContent = '🔄 Auto-Refresh: OFF';
+        btn.style.background = '#f3f4f6';
+        btn.style.color = 'inherit';
+        indicator.style.display = 'none';
+        
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        
+        showNotification('Auto-refresh disabled', 'info');
+    }
+}
+
+function refreshCurrent() {
+    loadRecommendations(currentType);
+}
+
+function showNotification(message, type = 'info') {
+    const notif = document.createElement('div');
+    notif.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+        ${type === 'success' ? 'background: #d1fae5; color: #059669;' : type === 'error' ? 'background: #fee2e2; color: #dc2626;' : 'background: #dbeafe; color: #1d4ed8;'}
+    `;
+    notif.textContent = message;
+    document.body.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
+}
+
+// Load products on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadRecommendations('products');
+    
+    // Add pulse animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

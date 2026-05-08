@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">📦 AI-Powered Inventory Management</h1>
+    
+    <!-- Quick Actions -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); color: white; cursor: pointer;" onclick="predictShortages()">
+            <div style="font-size: 32px;">⚠️</div>
+            <div style="margin-top: 10px; font-weight: bold;">Predict Shortages</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; cursor: pointer;" onclick="recommendReorder()">
+            <div style="font-size: 32px;">📦</div>
+            <div style="margin-top: 10px; font-weight: bold;">Recommend Reorder</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%); color: white; cursor: pointer;" onclick="detectAnomalies()">
+            <div style="font-size: 32px;">🔍</div>
+            <div style="margin-top: 10px; font-weight: bold;">Detect Anomalies</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1dd1a1 0%, #10ac84 100%); color: white; cursor: pointer;" onclick="warehouseAnalytics()">
+            <div style="font-size: 32px;">🏭</div>
+            <div style="margin-top: 10px; font-weight: bold;">Warehouse Analytics</div>
+        </div>
+    </div>
+    
+    <!-- Results Panel -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">🤖 AI Agent Results</h2>
+        <div id="aiResults" style="background: #f5f5f5; padding: 20px; border-radius: 6px; min-height: 300px;">
+            <p style="color: #666;">Click any action above to see AI-powered insights...</p>
+        </div>
+    </div>
+    
+    <!-- Inventory Overview -->
+    <div class="glass-card">
+        <h2 style="margin-bottom: 20px;">📊 Inventory Overview</h2>
+        <div id="inventoryOverview">
+            <p style="color: #666;">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+async function predictShortages() {
+    document.getElementById('aiResults').innerHTML = '<p style="color: #666;">AI Agent analyzing inventory data...</p>';
+    
+    try {
+        const response = await fetch('/api/admin/inventory/predict-shortages?days_ahead=14');
+        const data = await response.json();
+        
+        if (data.result && data.result.predictions) {
+            const predictions = data.result.predictions;
+            document.getElementById('aiResults').innerHTML = `
+                <h3 style="margin-bottom: 15px;">⚠️ Predicted Shortages (${data.result.total_at_risk} products at risk)</h3>
+                ${predictions.length > 0 ? `
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #fee;">
+                                <th style="padding: 12px; text-align: left;">Product</th>
+                                <th style="padding: 12px; text-align: center;">Current Stock</th>
+                                <th style="padding: 12px; text-align: center;">Avg Daily Sales</th>
+                                <th style="padding: 12px; text-align: center;">Stockout In</th>
+                                <th style="padding: 12px; text-align: center;">Urgency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${predictions.map(p => `
+                                <tr style="border-bottom: 1px solid #ddd; ${p.urgency === 'high' ? 'background: #fff5f5;' : ''}">
+                                    <td style="padding: 12px;"><strong>${p.name}</strong></td>
+                                    <td style="padding: 12px; text-align: center;">${p.current_stock}</td>
+                                    <td style="padding: 12px; text-align: center;">${p.avg_daily_sales}</td>
+                                    <td style="padding: 12px; text-align: center; color: ${p.urgency === 'high' ? '#c33' : '#960'}; font-weight: bold;">${p.predicted_stockout_days} days</td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; 
+                                            ${p.urgency === 'high' ? 'background: #fee; color: #c33;' : 'background: #ffd; color: #960;'}">${p.urgency}</span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p style="color: #3c3;">✅ No shortages predicted!</p>'}
+            `;
+        } else {
+            document.getElementById('aiResults').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+    } catch (error) {
+        document.getElementById('aiResults').innerHTML = `<p style="color: #c33;">Error: ${error}</p>`;
+    }
+}
+
+async function recommendReorder() {
+    document.getElementById('aiResults').innerHTML = '<p style="color: #666;">AI Agent calculating optimal reorder quantities...</p>';
+    
+    try {
+        const response = await fetch('/api/admin/inventory/recommend-reorder');
+        const data = await response.json();
+        
+        if (data.result && data.result.recommendations) {
+            const recs = data.result.recommendations;
+            document.getElementById('aiResults').innerHTML = `
+                <h3 style="margin-bottom: 15px;">📦 Reorder Recommendations (${data.result.total_recommendations} products)</h3>
+                ${recs.length > 0 ? `
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #e6f7ff;">
+                                <th style="padding: 12px; text-align: left;">Product</th>
+                                <th style="padding: 12px; text-align: center;">Current Stock</th>
+                                <th style="padding: 12px; text-align: center;">Reorder Point</th>
+                                <th style="padding: 12px; text-align: center;">Recommended Qty</th>
+                                <th style="padding: 12px; text-align: center;">Priority</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recs.map(r => `
+                                <tr style="border-bottom: 1px solid #ddd;">
+                                    <td style="padding: 12px;"><strong>${r.name}</strong></td>
+                                    <td style="padding: 12px; text-align: center;">${r.current_stock}</td>
+                                    <td style="padding: 12px; text-align: center;">${r.reorder_point}</td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: #667eea;">${r.recommended_quantity}</td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; 
+                                            ${r.priority === 'high' ? 'background: #fee; color: #c33;' : 'background: #ffd; color: #960;'}">${r.priority}</span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p style="color: #3c3;">✅ No reorder recommendations needed!</p>'}
+            `;
+        } else {
+            document.getElementById('aiResults').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+    } catch (error) {
+        document.getElementById('aiResults').innerHTML = `<p style="color: #c33;">Error: ${error}</p>`;
+    }
+}
+
+async function detectAnomalies() {
+    document.getElementById('aiResults').innerHTML = '<p style="color: #666;">AI Agent scanning for inventory anomalies...</p>';
+    
+    try {
+        const response = await fetch('/api/admin/inventory/anomalies');
+        const data = await response.json();
+        
+        if (data.result && data.result.anomalies) {
+            const anomalies = data.result.anomalies;
+            document.getElementById('aiResults').innerHTML = `
+                <h3 style="margin-bottom: 15px;">🔍 Detected Anomalies (${data.result.total_anomalies})</h3>
+                ${anomalies.length > 0 ? `
+                    <div style="display: grid; gap: 10px;">
+                        ${anomalies.map(a => `
+                            <div style="padding: 15px; border-radius: 6px; 
+                                ${a.type === 'demand_spike' ? 'background: #fff5f5; border-left: 4px solid #c33;' : 
+                                  'background: #f0f0f0; border-left: 4px solid #666;'}">
+                                <strong>${a.type === 'demand_spike' ? '📈 Demand Spike' : '📉 Dead Stock'}:</strong> ${a.name}
+                                <div style="color: #666; margin-top: 5px;">
+                                    Stock: ${a.current_stock} | 
+                                    ${a.recent_avg_daily_sales ? `Recent Sales: ${a.recent_avg_daily_sales}/day | ` : ''}
+                                    ${a.last_30_days_sales !== undefined ? `Last 30 Days: ${a.last_30_days_sales} sales | ` : ''}
+                                    Severity: <span style="color: ${a.severity === 'high' ? '#c33' : '#960'};">${a.severity}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<p style="color: #3c3;">✅ No anomalies detected!</p>'}
+            `;
+        } else {
+            document.getElementById('aiResults').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+    } catch (error) {
+        document.getElementById('aiResults').innerHTML = `<p style="color: #c33;">Error: ${error}</p>`;
+    }
+}
+
+async function warehouseAnalytics() {
+    document.getElementById('aiResults').innerHTML = '<p style="color: #666;">AI Agent generating warehouse analytics...</p>';
+    
+    try {
+        const response = await fetch('/api/admin/inventory/warehouse-analytics');
+        const data = await response.json();
+        
+        if (data.result) {
+            const analytics = data.result;
+            document.getElementById('aiResults').innerHTML = `
+                <h3 style="margin-bottom: 15px;">🏭 Warehouse Analytics</h3>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #667eea;">₹${analytics.total_inventory_value.toFixed(0)}</div>
+                        <div style="font-size: 12px; color: #666;">Total Value</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #667eea;">${analytics.total_products}</div>
+                        <div style="font-size: 12px; color: #666;">Total Products</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #fee; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #c33;">${analytics.low_stock_count}</div>
+                        <div style="font-size: 12px; color: #666;">Low Stock</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #fee; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #c33;">${analytics.out_of_stock_count}</div>
+                        <div style="font-size: 12px; color: #666;">Out of Stock</div>
+                    </div>
+                </div>
+                <h4 style="margin-bottom: 10px;">Category Breakdown</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 10px; text-align: left;">Category</th>
+                            <th style="padding: 10px; text-align: center;">Products</th>
+                            <th style="padding: 10px; text-align: center;">Total Stock</th>
+                            <th style="padding: 10px; text-align: right;">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${analytics.categories.map(c => `
+                            <tr style="border-bottom: 1px solid #ddd;">
+                                <td style="padding: 10px;">${c.category}</td>
+                                <td style="padding: 10px; text-align: center;">${c.product_count}</td>
+                                <td style="padding: 10px; text-align: center;">${c.total_stock}</td>
+                                <td style="padding: 10px; text-align: right;">₹${c.total_value.toFixed(0)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            document.getElementById('aiResults').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+    } catch (error) {
+        document.getElementById('aiResults').innerHTML = `<p style="color: #c33;">Error: ${error}</p>`;
+    }
+}
+
+// Load initial data
+warehouseAnalytics();
+</script>
+{% endblock %}

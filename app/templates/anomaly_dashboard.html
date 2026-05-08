@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">🚨 Anomaly Detection Dashboard</h1>
+    
+    <!-- Fraud Metrics -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); color: white; border-radius: 8px;">
+            <div id="totalAnomalies" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Detected Anomalies</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%); color: white; border-radius: 8px;">
+            <div id="fraudRate" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Fraud Rate</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #5f27cd 0%, #341f97 100%); color: white; border-radius: 8px;">
+            <div id="cancellationRate" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Cancellation Rate</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1dd1a1 0%, #10ac84 100%); color: white; border-radius: 8px;">
+            <div id="totalOrders" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Total Orders</div>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <!-- Anomaly Heatmap -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">🗺️ Anomaly Heatmap (Orders by Hour/Day)</h2>
+            <canvas id="heatmapChart" style="max-height: 400px;"></canvas>
+        </div>
+        
+        <!-- User Anomalies -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">👤 Suspicious Users</h2>
+            <div id="userAnomalies"></div>
+        </div>
+    </div>
+    
+    <!-- Live Anomaly Feed -->
+    <div class="glass-card">
+        <h2 style="margin-bottom: 20px;">📡 Live Anomaly Feed</h2>
+        <div id="anomalyFeed"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+async function loadAnomalyData() {
+    try {
+        const response = await fetch('/api/admin/anomaly/detect');
+        const data = await response.json();
+        
+        // Update metrics
+        document.getElementById('totalAnomalies').textContent = data.fraud_metrics.detected_anomalies;
+        document.getElementById('fraudRate').textContent = data.fraud_metrics.fraud_rate + '%';
+        document.getElementById('cancellationRate').textContent = data.fraud_metrics.cancellation_rate + '%';
+        document.getElementById('totalOrders').textContent = data.fraud_metrics.total_orders;
+        
+        // Display user anomalies
+        const userDiv = document.getElementById('userAnomalies');
+        if (data.user_anomalies && data.user_anomalies.length > 0) {
+            userDiv.innerHTML = data.user_anomalies.map(anomaly => `
+                <div style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; background: #fee;">
+                    <strong>${anomaly.user_email}</strong>
+                    <div style="color: #666; font-size: 14px;">${anomaly.reason}</div>
+                    <div style="color: #666; font-size: 14px;">${anomaly.order_count} orders, ₹${anomaly.total_spent.toFixed(0)}</div>
+                </div>
+            `).join('');
+        } else {
+            userDiv.innerHTML = '<p style="color: #666;">No suspicious users detected</p>';
+        }
+        
+        // Display anomaly feed
+        const feedDiv = document.getElementById('anomalyFeed');
+        if (data.anomalies && data.anomalies.length > 0) {
+            feedDiv.innerHTML = data.anomalies.map(anomaly => `
+                <div style="padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+                    ${anomaly.severity === 'high' ? 'background: #fee; border-left: 4px solid #c33;' : 'background: #ffd; border-left: 4px solid #fc3;'}">
+                    <div>
+                        <strong>${anomaly.order_id || 'User Behavior'}</strong>
+                        <div style="color: #666;">${anomaly.reason}</div>
+                        <div style="color: #999; font-size: 12px;">${new Date(anomaly.timestamp).toLocaleString()}</div>
+                    </div>
+                    ${anomaly.order_id_db ? `<button onclick="markFraud(${anomaly.order_id_db})" class="btn" style="padding: 6px 12px; font-size: 14px;">Mark Fraud</button>` : ''}
+                </div>
+            `).join('');
+        } else {
+            feedDiv.innerHTML = '<p style="color: #666;">No anomalies detected</p>';
+        }
+        
+        // Load heatmap
+        loadHeatmap(data.heatmap_data);
+    } catch (error) {
+        console.error('Error loading anomaly data:', error);
+    }
+}
+
+async function markFraud(orderId) {
+    if (!confirm('Mark this order as fraudulent?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/anomaly/${orderId}/mark-fraud`, { method: 'POST' });
+        if (response.ok) {
+            alert('Order marked as fraudulent');
+            loadAnomalyData();
+        }
+    } catch (error) {
+        alert('Error marking fraud');
+    }
+}
+
+function loadHeatmap(heatmapData) {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+    
+    const data = [];
+    for (let day = 0; day < 7; day++) {
+        for (let hour = 0; hour < 24; hour++) {
+            const value = heatmapData[day]?.[hour] || 0;
+            data.push({ x: hour, y: day, v: value });
+        }
+    }
+    
+    const ctx = document.getElementById('heatmapChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Order Volume',
+                data: data,
+                backgroundColor: data.map(d => `rgba(255, 107, 107, ${Math.min(d.v / 10, 1)})`),
+                pointRadius: 15
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: 'Hour' },
+                    ticks: { stepSize: 2 }
+                },
+                y: {
+                    title: { display: true, text: 'Day' },
+                    ticks: {
+                        callback: function(value) { return days[value]; }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Load data on page load
+loadAnomalyData();
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container section">
+  <div class="section-head"><h2>My Orders</h2><p>Track, view payment, and cancel eligible orders.</p></div>
+  <div class="order-list">
+    {% for order in orders %}
+    <div class="order-card glow-card order-card-grid">
+      <a href="/orders/{{ order.order_number }}">
+        <h3>{{ order.order_number }}</h3>
+        <p>Tracking: {{ order.tracking_id }}</p>
+        <p>Payment: {{ order.payment_method }} · {{ order.payment_status }}</p>
+      </a>
+      <div>
+        <strong>{{ order.status }}</strong>
+        <p>₹{{ '%.0f'|format(order.total_amount) }}</p>
+        <p><strong>Return:</strong> {{ order.return_status }}</p>
+      </div>
+      <div class="order-actions-inline">
+        <a class="btn btn-outline" href="/orders/{{ order.order_number }}">Track Order</a>
+        <a class="btn" href="/orders/{{ order.order_number }}/invoice.txt">Download Invoice</a>
+        {% if order.status == "Delivered" and order.return_status == "Not Requested" %}
+        <form method="post" action="/orders/{{ order.order_number }}/return" style="display:inline;">
+          <button class="btn danger-btn" type="submit">Return Order</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <p>No orders yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

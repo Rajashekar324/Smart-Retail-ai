@@ -1,0 +1,52 @@
+STORE POLICY KNOWLEDGE BASE
+
+DELIVERY
+
+Q: How long does delivery take?
+A: Standard delivery takes 3 to 6 business days. Express delivery takes 1 to 2 business days in major cities.
+
+Q: When is my order packed?
+A: Orders are usually packed within 24 hours after confirmation.
+
+Q: Will I receive a tracking ID?
+A: Yes. A tracking ID is generated for every confirmed order so customers can track their shipment.
+
+Q: How can I track my order?
+A: Customers can track their order using the tracking ID provided after the order is shipped.
+
+Q: Why is my order delayed?
+A: Delivery delays may occur due to high demand, logistics issues, or weather conditions.
+
+RETURNS AND EXCHANGES
+
+Q: Can I return a product?
+A: Yes. Customers can request a return within 7 days of delivery.
+
+Q: Can I exchange a product?
+A: Yes. Exchanges can be requested within 7 days of delivery.
+
+Q: What are the return conditions?
+A: The product must be unused, unwashed, and have the original tags attached.
+
+Q: How long does a refund take?
+A: Refunds are processed within 5 to 7 business days after the returned product passes the quality check.
+
+PAYMENTS
+
+Q: What payment methods are supported?
+A: The store supports UPI, credit card, debit card, net banking, and Cash on Delivery for eligible pin codes.
+
+Q: Can I pay with Cash on Delivery?
+A: Yes. Cash on Delivery is available for certain pin codes depending on delivery availability.
+
+SUPPORT AND TICKETS
+
+Q: When will a support ticket be created?
+A: A support ticket is created when the chatbot cannot resolve the issue or when customers report problems such as:
+- damaged product
+- wrong product
+- delivery failure
+- refund issues
+
+Q: How will my issue be resolved after ticket creation?
+A: The support team reviews the ticket and updates the status until the issue is resolved.

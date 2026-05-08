@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container section">
+  <div class="section-head"><h2>My Wishlist</h2><p>Saved items you may want to buy later.</p></div>
+  <div class="product-grid mini-grid">
+    {% for wish, product in items %}
+    <article class="product-card glow-card">
+      <img src="{{ product.image }}" alt="{{ product.name }}" />
+      <div class="product-info">
+        <span class="category">{{ product.category }}</span>
+        <h3>{{ product.name }}</h3>
+        <div class="product-meta"><strong>₹{{ '%.0f'|format(product.price) }}</strong><span>Stock: {{ product.stock }}</span></div>
+        <div class="product-actions-inline">
+          <a class="btn" href="/product/{{ product.id }}">View Product</a>
+          <form method="post" action="/wishlist/remove/{{ product.id }}"><button class="btn btn-outline" type="submit">Remove</button></form>
+        </div>
+      </div>
+    </article>
+    {% else %}
+    <p>Your wishlist is empty.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

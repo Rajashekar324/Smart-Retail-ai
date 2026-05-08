@@ -1,0 +1,28 @@
+PRODUCT INFORMATION KNOWLEDGE BASE
+
+Q: What sizes are available for clothing?
+A: Most clothing items are available in sizes Small (S), Medium (M), Large (L), and Extra Large (XL). Size availability may vary depending on the product.
+
+Q: What shoe sizes are available?
+A: Sneakers are usually available in sizes 7, 8, 9, and 10.
+
+Q: How can I check product availability?
+A: Customers can check real-time stock availability on the product page. Since stock changes frequently due to orders, the product page always shows the latest availability.
+
+Q: Why does a product show out of stock?
+A: Products may become unavailable when inventory is sold out or when demand is very high.
+
+Q: How should I wash cotton clothing?
+A: Wash dark cotton garments separately using cold water to prevent color bleeding and maintain fabric quality.
+
+Q: Can I bleach printed t-shirts?
+A: No. Printed t-shirts should not be bleached as it may damage the print.
+
+Q: How should I dry dresses or denim?
+A: Air drying dresses and denim helps preserve the fabric quality and increases durability.
+
+Q: How do I know which size will fit me?
+A: Customers should refer to the size chart available on each product page for accurate sizing guidance.
+
+Q: Can I ask the chatbot about product stock?
+A: Yes. Customers can ask the chatbot about product availability, sizes, or stock updates.

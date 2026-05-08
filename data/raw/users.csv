@@ -1,0 +1,9 @@
+id,name,email,phone,password_hash,is_admin,created_at
+1,Admin,admin@stylehub.com,9999999999,$pbkdf2-sha256$29000$LgVAaE3pXUspBaB0bo0R4g$EsTkwY/L47zjwSmAFSv4K2mrYcxnbqgHnAy.kZ7KegY,1,2026-05-07 04:38:22.090789
+2,John Smith,john@example.com,9876543210,$pbkdf2-sha256$29000$0br3fi/FOGfMWQuBUErJWQ$Fove6Vw/rGuu2i.uEANA4mNzyZVAIylojJ0XXEpnUZM,0,2026-04-07 04:38:22.118770
+3,Sarah Johnson,sarah@example.com,8765432109,$pbkdf2-sha256$29000$IORcy3kPodQag5BSitG6lw$IU88YBZCkp2lzckckZw3oXDRCYSBnYn8K5RIxki5cso,0,2026-04-07 04:38:22.137879
+4,Mike Davis,mike@example.com,7654321098,$pbkdf2-sha256$29000$YmxtjfHe.59z7n0vRQihVA$GAN9dj3H1CivaQ4nUfEMyNiTnuy9nJOOiOoR1j8w.VA,0,2026-04-07 04:38:22.157550
+5,Emily Brown,emily@example.com,6543210987,$pbkdf2-sha256$29000$WotxTolxTsl5b.29d47xPg$VWXai3VkPWhVsOpuIDCOOWLKNZ8dOsV2vhSCRQx45mk,0,2026-04-07 04:38:22.176613
+6,David Wilson,david@example.com,5432109876,$pbkdf2-sha256$29000$SmmtVWptjXEupfTee29tLQ$cpaJdkfkXNRJTk8oDxzvSULOWvAMcdcFCfxtUkyILQs,0,2026-04-07 04:38:22.198116
+7,Lisa Anderson,lisa@example.com,4321098765,$pbkdf2-sha256$29000$ZCxl7F3rnRMiBIBQ6l2rFQ$nQM62ytpTOdlhf5zh3S/UvSVOAdqq99BYMPUHoBFc6U,0,2026-04-07 04:38:22.218285
+8,VANGALA RAJASHEKAR REDDY,22h51a6661@cmrcet.ac.in,7702533022,$pbkdf2-sha256$29000$1HpPaY1R6p2zVso5Z0xJaQ$MC8BCMg5zknlMMReQb6oGfCsn212MNogbrwaWzVe8Eg,0,2026-05-07 04:50:59.921121

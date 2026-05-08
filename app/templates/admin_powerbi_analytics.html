@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .powerbi-shell { width: calc(100% - 48px); max-width: none; margin: 30px 24px 0; }
+    body.with-admin-sidebar .powerbi-shell,
+    body.with-admin-sidebar.collapsed .powerbi-shell {
+        width: calc(100vw - 308px);
+        max-width: none;
+        margin-left: 24px;
+        margin-right: 24px;
+    }
+    .powerbi-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 22px; }
+    .powerbi-head h1 { margin: 0 0 8px; }
+    .powerbi-head p { margin: 0; color: #64748b; }
+    .powerbi-panel { background: rgba(255,255,255,.94); border: 1px solid rgba(148,163,184,.24); border-radius: 8px; padding: 28px 32px; box-shadow: 0 12px 28px rgba(15,23,42,.08); }
+    .dashboard-selector { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; align-items: stretch; justify-content: stretch; }
+    .dashboard-card { width: 100%; border: 2px solid #e2e8f0; border-radius: 8px; padding: 26px 28px; cursor: pointer; background: #fff; transition: border-color .18s, background .18s, transform .18s; min-height: 240px; display: grid; grid-template-rows: auto auto 1fr auto; justify-items: center; align-items: start; text-align: center; gap: 12px; }
+    .dashboard-card:hover { transform: translateY(-1px); background: #f8fafc; }
+    .dashboard-card.active { border-color: #2563eb; background: #eff6ff; }
+    .dashboard-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 8px; color: #fff; font-weight: 900; font-size: .95rem; margin-bottom: 2px; }
+    .dashboard-card h3 { margin: 0; font-size: 1rem; line-height: 1.25; align-self: end; }
+    .dashboard-card p { margin: 0; color: #64748b; font-size: .92rem; line-height: 1.45; max-width: 280px; align-self: start; }
+    .page-chip-row { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 4px; justify-content: center; align-content: flex-start; }
+    .page-chip-row span { padding: 4px 8px; background: #f1f5f9; border-radius: 6px; font-size: .76rem; color: #475569; line-height: 1.2; }
+    .visual-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 20px 0; }
+    .visual-toolbar h2 { margin: 0 0 4px; }
+    .visual-toolbar p { margin: 0; color: #64748b; }
+    .card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .metric-tile { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+    .metric-tile span { display: block; color: #64748b; font-size: .85rem; }
+    .metric-tile strong { display: block; font-size: 1.55rem; margin: 8px 0 4px; color: #0f172a; }
+    .metric-tile small { color: #64748b; }
+    .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+    .chart-panel { height: 360px; }
+    .chart-panel h3, .table-panel h3, .insight-panel h3 { margin: 0 0 14px; }
+    .chart-frame { height: 292px; position: relative; }
+    .lower-grid { display: grid; grid-template-columns: 1.3fr .7fr; gap: 18px; }
+    .powerbi-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    .powerbi-table th, .powerbi-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    .powerbi-table th { color: #475569; background: #f8fafc; }
+    .insight-list { margin: 0; padding-left: 18px; color: #334155; line-height: 1.65; }
+    .empty-state { min-height: 260px; display: grid; place-items: center; text-align: center; color: #64748b; }
+    @media (max-width: 1180px) {
+        body.with-admin-sidebar .powerbi-shell,
+        body.with-admin-sidebar.collapsed .powerbi-shell,
+        .powerbi-shell { width: calc(100% - 32px); margin-left: 16px; margin-right: 16px; }
+        .dashboard-selector, .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .chart-grid, .lower-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .dashboard-selector, .card-grid { grid-template-columns: 1fr; }
+        .visual-toolbar, .powerbi-head { flex-direction: column; }
+    }
+</style>
+
+<div class="container powerbi-shell">
+    <div class="powerbi-head">
+        <div>
+            <h1>Power BI Analytics</h1>
+            <p>Consolidated admin analytics for sales, forecasting, anomaly detection, customers, inventory, and AI agents.</p>
+        </div>
+        <a class="btn btn-outline" href="/admin">Back to Admin</a>
+    </div>
+
+    <section class="powerbi-panel">
+        <h2 style="margin-top: 0;">Select Dashboard</h2>
+        <div id="dashboardSelector" class="dashboard-selector">
+            <p style="color: #64748b; grid-column: 1/-1;">Loading dashboards...</p>
+        </div>
+    </section>
+
+    <section id="visualArea" class="empty-state powerbi-panel" style="margin-top: 18px;">
+        <div>
+            <h2>Select a dashboard</h2>
+            <p>All visuals for that feature will load here.</p>
+        </div>
+    </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+let currentDashboardId = null;
+let charts = [];
+
+const palette = {
+    sales_analytics: '#2563eb',
+    forecasting: '#10b981',
+    anomaly_detection: '#ef4444',
+    customer_insights: '#8b5cf6',
+    inventory_analytics: '#f59e0b',
+    agent_analytics: '#06b6d4'
+};
+
+function dashboardInitial(name) {
+    return (name || '?').split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+}
+
+async function loadDashboards() {
+    const response = await fetch('/api/admin/powerbi/dashboards');
+    const data = await response.json();
+    const container = document.getElementById('dashboardSelector');
+
+    container.innerHTML = data.dashboards.map(d => `
+        <button type="button" class="dashboard-card" id="dash-card-${d.id}" onclick="selectDashboard('${d.id}')">
+            <div class="dashboard-icon" style="background:${d.color || palette[d.id] || '#2563eb'}">${dashboardInitial(d.name)}</div>
+            <h3>${d.name}</h3>
+            <p>${d.description}</p>
+            <div class="page-chip-row">
+                ${d.pages.slice(0, 4).map(page => `<span>${page}</span>`).join('')}
+            </div>
+        </button>
+    `).join('');
+
+    if (data.dashboards.length) {
+        selectDashboard(data.dashboards[0].id);
+    }
+}
+
+async function selectDashboard(dashboardId) {
+    currentDashboardId = dashboardId;
+    document.querySelectorAll('.dashboard-card').forEach(card => card.classList.remove('active'));
+    const selected = document.getElementById(`dash-card-${dashboardId}`);
+    if (selected) selected.classList.add('active');
+
+    const area = document.getElementById('visualArea');
+    area.className = 'powerbi-panel';
+    area.innerHTML = '<div class="empty-state"><div><h2>Loading analytics...</h2><p>Preparing charts and feature data.</p></div></div>';
+
+    const response = await fetch(`/api/admin/powerbi/dashboards/${dashboardId}/visuals`);
+    if (!response.ok) {
+        area.innerHTML = '<div class="empty-state"><div><h2>Could not load dashboard</h2><p>Please try again.</p></div></div>';
+        return;
+    }
+
+    const data = await response.json();
+    renderDashboard(data);
+}
+
+function renderDashboard(data) {
+    destroyCharts();
+    const area = document.getElementById('visualArea');
+    const table = data.tables && data.tables.length ? data.tables[0] : null;
+
+    area.innerHTML = `
+        <div class="visual-toolbar">
+            <div>
+                <h2>${data.name}</h2>
+                <p>${data.description}</p>
+            </div>
+            <div class="page-chip-row">
+                ${(data.pages || []).map(page => `<span>${page}</span>`).join('')}
+            </div>
+        </div>
+
+        <div class="card-grid">
+            ${(data.cards || []).map(card => `
+                <div class="metric-tile">
+                    <span>${card.label}</span>
+                    <strong>${card.value}</strong>
+                    <small>${card.hint || ''}</small>
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="chart-grid">
+            ${(data.charts || []).map((chart, index) => `
+                <div class="powerbi-panel chart-panel">
+                    <h3>${chart.title}</h3>
+                    <div class="chart-frame"><canvas id="chart-${index}"></canvas></div>
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="lower-grid">
+            <div class="powerbi-panel table-panel">
+                <h3>${table ? table.title : 'Details'}</h3>
+                ${renderTable(table)}
+            </div>
+            <div class="powerbi-panel insight-panel">
+                <h3>Insights</h3>
+                <ul class="insight-list">
+                    ${(data.insights || []).map(item => `<li>${item}</li>`).join('')}
+                </ul>
+                <p style="color:#64748b; margin-bottom:0; font-size:.85rem;">Updated: ${new Date(data.generated_at).toLocaleString()}</p>
+            </div>
+        </div>
+    `;
+
+    requestAnimationFrame(() => {
+        (data.charts || []).forEach((chart, index) => createChart(`chart-${index}`, chart));
+    });
+}
+
+function renderTable(table) {
+    if (!table || !table.rows || !table.rows.length) {
+        return '<p style="color:#64748b;">No table rows available yet.</p>';
+    }
+
+    return `
+        <div style="overflow:auto;">
+            <table class="powerbi-table">
+                <thead><tr>${table.headers.map(header => `<th>${header}</th>`).join('')}</tr></thead>
+                <tbody>
+                    ${table.rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function createChart(canvasId, chartSpec) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !window.Chart) return;
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom' }
+        },
+        scales: chartSpec.type === 'doughnut' ? {} : {
+            y: { beginAtZero: true },
+            y1: {
+                beginAtZero: true,
+                position: 'right',
+                grid: { drawOnChartArea: false },
+                display: (chartSpec.datasets || []).some(ds => ds.yAxisID === 'y1')
+            }
+        }
+    };
+
+    charts.push(new Chart(canvas, {
+        type: chartSpec.type,
+        data: {
+            labels: chartSpec.labels,
+            datasets: chartSpec.datasets
+        },
+        options
+    }));
+}
+
+function destroyCharts() {
+    charts.forEach(chart => chart.destroy());
+    charts = [];
+}
+
+loadDashboards().catch(error => {
+    console.error(error);
+    document.getElementById('dashboardSelector').innerHTML = '<p style="color:#dc2626; grid-column:1/-1;">Unable to load dashboards.</p>';
+});
+</script>
+{% endblock %}

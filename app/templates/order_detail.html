@@ -1,0 +1,559 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container section">
+    <div class="section-head">
+        <h2>Order Details</h2>
+        <p>Order ID: <strong>{{ order.order_number }}</strong> | Tracking ID: <strong>{{ order.tracking_id }}</strong></p>
+    </div>
+    <div class="detail-card order-detail-card">
+        <div class="grid-two info-grid">
+            <div>
+                <p><strong>Status:</strong> 
+                    <span class="status-badge {% if order.status == 'Delivered' %}status-delivered{% endif %}">
+                        {{ order.status }}
+                    </span>
+                </p>
+                <p><strong>Amount:</strong> ₹{{ '%.0f'|format(order.total_amount) }}</p>
+                <p><strong>Payment Method:</strong> {{ order.payment_method }}</p>
+                <p><strong>Payment Status:</strong> {{ order.payment_status }}</p>
+                <p><strong>Return Status:</strong> {{ order.return_status }}</p>
+                {% if order.payment_reference %}<p><strong>Payment Ref:</strong> {{ order.payment_reference }}</p>{% endif %}
+            </div>
+            <div>
+                <p><strong>Delivery Address:</strong> {{ order.address }}, {{ order.city }}, {{ order.state }} - {{ order.pincode }}</p>
+                {% if order.cancel_reason %}<p><strong>Cancel Reason:</strong> {{ order.cancel_reason }}</p>{% endif %}
+            </div>
+        </div>
+        <div class="section-head compact-head"><h3>Track Order</h3></div>
+        <div class="timeline-flow">
+            {% for step in timeline %}
+            <div class="timeline-step {% if step.done %}done{% endif %} {% if step.active %}active{% endif %}">
+                <div class="timeline-dot"></div>
+                <span>{{ step.label }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="order-actions-inline order-detail-actions">
+            <a class="btn btn-outline" href="/orders">Back to Orders</a>
+            <a class="btn" href="/orders/{{ order.order_number }}/invoice.txt">Download Invoice</a>
+        </div>
+        {% if order.status == "Delivered" and order.return_status == "Not Requested" %}
+        <form method="post" action="/orders/{{ order.order_number }}/return" class="stack-form cancel-box">
+            <button class="btn danger-btn" type="submit">Request Return</button>
+        </form>
+        {% endif %}
+
+        <h3>Items</h3>
+        {% for item in order.items %}
+        <div class="line-item item-with-review">
+            <div class="item-info">
+                <span class="product-name">{{ item.product_name }} ({{ item.size }}) × {{ item.quantity }}</span>
+                {% if order.status == "Delivered" %}
+                <button class="btn btn-sm btn-review" 
+                        onclick='openReviewModal({{ order.id }}, {{ item.product_id }}, {{ item.product_name | tojson }})'
+                        data-order-id="{{ order.id }}"
+                        data-product-id="{{ item.product_id }}">
+                    <i class="fas fa-star"></i> Write Review
+                </button>
+                {% endif %}
+            </div>
+            <strong>₹{{ '%.0f'|format(item.unit_price * item.quantity) }}</strong>
+        </div>
+        {% endfor %}
+
+        <!-- Reviews Section for Delivered Orders -->
+        {% if order.status == "Delivered" %}
+        <div id="order-reviews-section" class="reviews-section">
+            <h3><i class="fas fa-comments"></i> Your Reviews</h3>
+            <div id="order-reviews-list" class="reviews-list">
+                <p class="loading-text">Loading reviews...</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if order.status not in ['Delivered', 'Cancelled'] %}
+        <form method="post" action="/orders/{{ order.order_number }}/cancel" class="stack-form cancel-box">
+            <textarea name="cancel_reason" placeholder="Reason for cancellation" required></textarea>
+            <button class="btn danger-btn" type="submit">Cancel Order</button>
+        </form>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+    <div class="modal-content review-modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-star"></i> Write a Review</h3>
+            <span class="close-modal" onclick="closeReviewModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p class="product-name-display" id="reviewProductName"></p>
+            
+            <form id="reviewForm" onsubmit="submitReview(event)">
+                <input type="hidden" id="reviewOrderId" name="order_id">
+                <input type="hidden" id="reviewProductId" name="product_id">
+                
+                <div class="form-group">
+                    <label>Your Rating</label>
+                    <div class="star-rating">
+                        <input type="radio" id="star5" name="rating" value="5" required>
+                        <label for="star5" title="5 stars"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star4" name="rating" value="4">
+                        <label for="star4" title="4 stars"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star3" name="rating" value="3">
+                        <label for="star3" title="3 stars"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star2" name="rating" value="2">
+                        <label for="star2" title="2 stars"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star1" name="rating" value="1">
+                        <label for="star1" title="1 star"><i class="fas fa-star"></i></label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="reviewText">Your Review</label>
+                    <textarea id="reviewText" name="review_text" rows="4" 
+                              placeholder="Share your experience with this product... (min 5 characters)"
+                              minlength="5" maxlength="1000" required></textarea>
+                    <small class="char-count"><span id="charCount">0</span> / 1000</small>
+                </div>
+                
+                <div id="reviewError" class="alert alert-error" style="display: none;"></div>
+                <div id="reviewSuccess" class="alert alert-success" style="display: none;"></div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeReviewModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitReviewBtn">
+                        <span class="btn-text">Submit Review</span>
+                        <span class="btn-loading" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Analyzing...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Status Badge */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+.status-delivered {
+    background: #10b981;
+    color: white;
+}
+
+/* Item with Review */
+.item-with-review {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.product-name {
+    font-weight: 500;
+}
+.btn-review {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    font-size: 0.85em;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-review:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Reviews Section */
+.reviews-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #e5e7eb;
+}
+.reviews-section h3 {
+    margin-bottom: 15px;
+    color: #374151;
+}
+.reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.review-card {
+    background: #f9fafb;
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+}
+.review-card.sentiment-positive { border-left-color: #10b981; }
+.review-card.sentiment-negative { border-left-color: #ef4444; }
+.review-card.sentiment-neutral { border-left-color: #6b7280; }
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.review-rating {
+    color: #fbbf24;
+}
+.review-sentiment {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 600;
+}
+.sentiment-badge-positive { background: #d1fae5; color: #065f46; }
+.sentiment-badge-negative { background: #fee2e2; color: #991b1b; }
+.sentiment-badge-neutral { background: #e5e7eb; color: #374151; }
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.3s ease;
+}
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.modal-header h3 {
+    margin: 0;
+    color: #1f2937;
+}
+.close-modal {
+    font-size: 28px;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+}
+.close-modal:hover {
+    color: #1f2937;
+}
+.modal-body {
+    padding: 24px;
+}
+.product-name-display {
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f3f4f6;
+    border-radius: 8px;
+}
+
+/* Star Rating */
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 5px;
+}
+.star-rating input {
+    display: none;
+}
+.star-rating label {
+    font-size: 28px;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+    color: #fbbf24;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #374151;
+}
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.char-count {
+    display: block;
+    text-align: right;
+    margin-top: 5px;
+    color: #6b7280;
+    font-size: 0.85em;
+}
+
+/* Alerts */
+.alert {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+/* Modal Actions */
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+.modal-actions .btn {
+    padding: 10px 24px;
+}
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+/* Loading State */
+.loading-text {
+    color: #6b7280;
+    font-style: italic;
+}
+.no-reviews {
+    color: #6b7280;
+    text-align: center;
+    padding: 20px;
+}
+</style>
+
+<script>
+// Review Modal Functions
+let currentOrderId = null;
+let currentProductId = null;
+
+function openReviewModal(orderId, productId, productName) {
+    currentOrderId = orderId;
+    currentProductId = productId;
+    
+    document.getElementById('reviewOrderId').value = orderId;
+    document.getElementById('reviewProductId').value = productId;
+    document.getElementById('reviewProductName').textContent = productName;
+    
+    // Reset form
+    document.getElementById('reviewForm').reset();
+    document.getElementById('charCount').textContent = '0';
+    document.getElementById('reviewError').style.display = 'none';
+    document.getElementById('reviewSuccess').style.display = 'none';
+    
+    // Show modal
+    document.getElementById('reviewModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+// Load reviews on page load
+document.addEventListener('DOMContentLoaded', function() {
+    {% if order.status == "Delivered" %}
+    loadOrderReviews({{ order.id }});
+    {% endif %}
+    
+    // Close modal on outside click
+    const modal = document.getElementById('reviewModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReviewModal();
+            }
+        });
+    }
+    
+    // Character counter
+    const reviewText = document.getElementById('reviewText');
+    if (reviewText) {
+        reviewText.addEventListener('input', function() {
+            document.getElementById('charCount').textContent = this.value.length;
+        });
+    }
+});
+
+// Submit Review
+async function submitReview(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('reviewForm');
+    const formData = new FormData(form);
+    
+    const reviewData = {
+        order_id: parseInt(formData.get('order_id')),
+        product_id: parseInt(formData.get('product_id')),
+        rating: parseInt(formData.get('rating')),
+        review_text: formData.get('review_text')
+    };
+    
+    // Show loading state
+    const submitBtn = document.getElementById('submitReviewBtn');
+    submitBtn.disabled = true;
+    submitBtn.querySelector('.btn-text').style.display = 'none';
+    submitBtn.querySelector('.btn-loading').style.display = 'inline';
+    
+    document.getElementById('reviewError').style.display = 'none';
+    document.getElementById('reviewSuccess').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/v1/reviews', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(reviewData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // Show success
+            const successDiv = document.getElementById('reviewSuccess');
+            successDiv.textContent = `Review submitted! Sentiment: ${result.review.sentiment}`;
+            successDiv.style.display = 'block';
+            
+            // Update the button on the item
+            updateReviewButton(currentOrderId, currentProductId, true);
+            
+            // Refresh reviews list
+            loadOrderReviews(currentOrderId);
+            
+            // Close modal after delay
+            setTimeout(() => {
+                closeReviewModal();
+            }, 2000);
+            
+        } else {
+            throw new Error(result.detail || result.error || 'Failed to submit review');
+        }
+        
+    } catch (error) {
+        const errorDiv = document.getElementById('reviewError');
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.querySelector('.btn-text').style.display = 'inline';
+        submitBtn.querySelector('.btn-loading').style.display = 'none';
+    }
+}
+
+// Update review button after submission
+function updateReviewButton(orderId, productId, hasReviewed) {
+    const buttons = document.querySelectorAll(`button[data-order-id="${orderId}"][data-product-id="${productId}"]`);
+    buttons.forEach(btn => {
+        if (hasReviewed) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Reviewed';
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'not-allowed';
+        }
+    });
+}
+
+// Load order reviews
+async function loadOrderReviews(orderId) {
+    const reviewsList = document.getElementById('order-reviews-list');
+    
+    try {
+        const response = await fetch(`/api/v1/reviews/order/${orderId}`);
+        const data = await response.json();
+        
+        if (data.reviews && data.reviews.length > 0) {
+            reviewsList.innerHTML = data.reviews.map(review => `
+                <div class="review-card sentiment-${review.sentiment}">
+                    <div class="review-header">
+                        <div class="review-rating">
+                            ${Array(review.rating).fill('<i class="fas fa-star"></i>').join('')}
+                            ${Array(5 - review.rating).fill('<i class="far fa-star"></i>').join('')}
+                        </div>
+                        <span class="review-sentiment sentiment-badge-${review.sentiment}">
+                            ${review.sentiment}
+                        </span>
+                    </div>
+                    <p class="review-text">${review.review_text}</p>
+                    <small class="review-date">${new Date(review.created_at).toLocaleDateString()}</small>
+                </div>
+            `).join('');
+            
+            // Update buttons for reviewed products
+            data.reviews.forEach(review => {
+                updateReviewButton(review.order_id, review.product_id, true);
+            });
+            
+        } else {
+            reviewsList.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review your delivered items!</p>';
+        }
+        
+    } catch (error) {
+        reviewsList.innerHTML = '<p class="no-reviews">Unable to load reviews.</p>';
+        console.error('Error loading reviews:', error);
+    }
+}
+
+</script>
+{% endblock %}

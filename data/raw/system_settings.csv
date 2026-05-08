@@ -1,0 +1,8 @@
+id,setting_key,setting_value,setting_type,description,updated_at,updated_by
+1,store_name,StyleHub AI,string,Store display name,2026-05-07 15:11:09.219613,
+2,support_email,support@stylehub.ai,string,Support email address,2026-05-07 15:11:09.240209,
+3,timezone,Asia/Kolkata,string,System timezone,2026-05-07 15:11:09.253523,
+4,email_notifications,true,bool,Enable email notifications,2026-05-07 15:11:09.268428,
+5,order_alerts,true,bool,Enable new order alerts,2026-05-07 15:11:09.291058,
+6,ticket_alerts,true,bool,Enable support ticket alerts,2026-05-07 15:11:09.310177,
+7,low_stock_alerts,true,bool,Enable low stock warnings,2026-05-07 15:11:09.325985,

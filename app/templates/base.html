@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StyleHub AI Store</title>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body data-current-product-id="{{ current_product_id or '' }}" class="{% if user and user.is_admin %}with-admin-sidebar{% endif %}">
+
+    {% if user and user.is_admin %}
+
+<div id="admin-sidebar" class="admin-sidebar">
+
+    <div class="sidebar-header" style="position: sticky; top: 0; padding: 20px; background: rgba(15,23,42,0.98); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; z-index: 10;">
+        <span style="font-size: 1.8rem;">⚡</span>
+        <div>
+            <h2 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: white;">StyleHub AI</h2>
+            <p style="margin: 0; font-size: 0.75rem; color: rgba(255,255,255,0.6);">Admin Control</p>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="sidebar-section" style="margin: 8px 0; padding: 0 16px;">
+        <div style="padding: 10px 0 5px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px;">Dashboard</div>
+
+        <a href="/admin" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🏠</span>
+            <span>Overview</span>
+        </a>
+
+        <a href="/admin/analytics" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">📊</span>
+            <span>Analytics</span>
+        </a>
+
+        <a href="/admin/documents" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">📑</span>
+            <span>Documents</span>
+        </a>
+    </div>
+
+    <!-- AI MODULES -->
+    <div class="sidebar-section" style="margin: 8px 0; padding: 0 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+        <div style="padding: 10px 0 5px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px;">AI Modules</div>
+
+        <a href="/admin/forecast" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">📈</span>
+            <span>Demand Forecasting</span>
+        </a>
+
+        <a href="/admin/anomaly" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🚨</span>
+            <span>Anomaly Detection</span>
+        </a>
+
+        <a href="/admin/agents" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🤖</span>
+            <span>Multi-Agent Center</span>
+        </a>
+
+        <a href="/admin/chat-ai" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🧠</span>
+            <span>AI Assistant</span>
+        </a>
+
+        <a href="/admin/recommendations" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">✨</span>
+            <span>Recommendations</span>
+        </a>
+    </div>
+
+    <!-- STORE -->
+    <div class="sidebar-section" style="margin: 8px 0; padding: 0 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+        <div style="padding: 10px 0 5px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px;">Store Management</div>
+
+        <a href="/admin/products" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🛍️</span>
+            <span>Products</span>
+        </a>
+
+        <a href="/admin/inventory" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">📦</span>
+            <span>Inventory</span>
+        </a>
+
+        <a href="/admin/orders" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🧾</span>
+            <span>Orders</span>
+        </a>
+
+        <a href="/admin/payments" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">💳</span>
+            <span>Payments</span>
+        </a>
+
+        <a href="/admin/shipping" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🚚</span>
+            <span>Shipping</span>
+        </a>
+    </div>
+
+    <!-- USERS -->
+    <div class="sidebar-section" style="margin: 8px 0; padding: 0 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+        <div style="padding: 10px 0 5px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px;">Users & CRM</div>
+
+        <a href="/admin/users" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">👥</span>
+            <span>User Management</span>
+        </a>
+
+        <a href="/admin/customers" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🧑‍🤝‍🧑</span>
+            <span>Customers</span>
+        </a>
+
+        <a href="/admin/tickets" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🎧</span>
+            <span>Support Tickets</span>
+        </a>
+
+        <a href="/admin/feedback" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">⭐</span>
+            <span>Feedback</span>
+        </a>
+    </div>
+
+    <!-- CLOUD -->
+    <div class="sidebar-section" style="margin: 8px 0; padding: 0 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+        <div style="padding: 10px 0 5px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px;">Cloud & Data</div>
+
+        <a href="/admin/azure" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">☁️</span>
+            <span>Azure Services</span>
+        </a>
+
+        <a href="/admin/data-pipeline" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">☁️</span>
+            <span>Azure Data Pipeline</span>
+        </a>
+
+        <a href="/admin/powerbi" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">📈</span>
+            <span>Power BI</span>
+        </a>
+
+        <a href="/admin/sentiment-analytics" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">💭</span>
+            <span>Sentiment Analytics</span>
+        </a>
+    </div>
+
+    <!-- SYSTEM -->
+    <div class="sidebar-section" style="margin: 8px 0; padding: 0 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+        <div style="padding: 10px 0 5px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px;">System</div>
+
+        <a href="/admin/settings" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">⚙️</span>
+            <span>Settings</span>
+        </a>
+
+        <a href="/admin/security" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🔐</span>
+            <span>Security</span>
+        </a>
+
+        <a href="/logout" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 0; color: rgba(255,255,255,0.9); font-size: 0.9rem; border-radius: 6px; text-decoration: none;">
+            <span style="font-size: 1.1rem;">🚪</span>
+            <span>Logout</span>
+        </a>
+    </div>
+
+</div>
+
+<button id="toggle-sidebar" class="sidebar-toggle" title="Close Menu">
+    ✕
+</button>
+
+<!-- Overlay for closing sidebar when clicking outside -->
+<div id="sidebar-overlay" class="sidebar-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999;"></div>
+
+{% endif %}
+
+    <header class="navbar glass-nav">
+        <div class="container nav-inner">
+            <a href="/" class="brand">StyleHub<span>AI</span></a>
+            <nav>
+                {% if user and user.is_admin %}
+                    <a href="/">🏠 Home</a>
+                    <a href="/admin">⚙️ Admin Panel</a>
+                    <a href="/admin/analytics">📊 Analytics</a>
+                {% else %}
+                    <a href="/">Home</a>
+                    {% if user %}
+                        <a href="/orders">My Orders</a>
+                        <a href="/cart">Cart</a>
+                        <a href="/wishlist">Wishlist</a>
+                        <a href="/profile">Profile</a>
+                        <a href="/order-analytics">Analytics</a>
+                        <a href="/alerts">Alerts</a>
+                        <a href="/documents">Docs</a>
+                    {% endif %}
+                {% endif %}
+            </nav>
+            <div class="nav-actions">
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" type="button">
+                    <span class="theme-toggle-icon sun">☀️</span>
+                    <span class="theme-toggle-icon moon">🌙</span>
+                </button>
+                {% if user %}
+                    <span class="welcome">{% if user.is_admin %}🔐 {% endif %}Hi, {{ user.name }}</span>
+                    <a class="btn btn-outline" href="/logout">Logout</a>
+                {% else %}
+                    <a class="btn btn-outline" href="/login">Login</a>
+                    <a class="btn" href="/register">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <div id="chatbot-widget" class="chatbot-widget">
+        <div id="chatbot-hint" class="chatbot-hint">Need help? I'm here to assist you!</div>
+
+        <div id="chatbot-panel" class="chatbot-panel hidden" aria-live="polite">
+            <div class="chat-header gradient-panel">
+                <div class="chat-header-top">
+                    <div class="chat-brand-wrap">
+                        <div class="chat-avatar">AI</div>
+                        <div>
+                            <h3>Customer Support</h3>
+                            <p>Products, recommendations, orders, tickets, delivery and cart help.</p>
+                        </div>
+                    </div>
+                    <button id="chatbot-close" class="chatbot-close" type="button" aria-label="Close chatbot">×</button>
+                </div>
+            </div>
+
+            <div id="chat-messages" class="chat-messages">
+                <div class="bot-msg">
+                    <div class="msg-title">StyleHub Assistant</div>
+                    <div class="msg-text">Hello! How can I help you today?</div>
+                </div>
+            </div>
+
+            <div class="chat-suggestion-head">Popular questions</div>
+            <div class="chat-quick-actions"></div>
+
+            <form id="chat-form" class="chat-input-row">
+                <input id="chat-input" type="text" placeholder="Ask about orders, products, returns, tickets..." autocomplete="off" />
+                <button id="chat-send" type="submit">Send</button>
+            </form>
+        </div>
+
+        <button id="chatbot-toggle" class="chatbot-toggle" type="button" aria-label="Open chatbot">
+            <span class="chatbot-toggle-icon">💬</span>
+        </button>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const body = document.body;
+        const toggleBtn = document.getElementById('toggle-sidebar');
+        const sidebar = document.getElementById('admin-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        if (!toggleBtn || !sidebar) return;
+
+        // Function to open sidebar (remove collapsed class)
+        function openSidebar() {
+            sidebar.style.transform = 'translateX(0)';
+            body.classList.remove('collapsed');
+            toggleBtn.innerHTML = '✕';
+            toggleBtn.title = 'Close Menu';
+            if (overlay) overlay.style.display = 'block';
+            localStorage.setItem('sidebarCollapsed', 'false');
+        }
+
+        // Function to close sidebar (add collapsed class)
+        function closeSidebar() {
+            sidebar.style.transform = 'translateX(-260px)';
+            body.classList.add('collapsed');
+            toggleBtn.innerHTML = '☰';
+            toggleBtn.title = 'Open Menu';
+            if (overlay) overlay.style.display = 'none';
+            localStorage.setItem('sidebarCollapsed', 'true');
+        }
+
+        // Restore state from localStorage
+        // Sidebar is visible by default, only collapse if user explicitly closed it
+        const savedState = localStorage.getItem('sidebarCollapsed');
+        if (savedState === 'true') {
+            closeSidebar();
+        }
+
+        // Toggle button click
+        toggleBtn.addEventListener('click', function() {
+            if (body.classList.contains('collapsed')) {
+                openSidebar();
+            } else {
+                closeSidebar();
+            }
+        });
+
+        // Close sidebar when clicking overlay
+        if (overlay) {
+            overlay.addEventListener('click', closeSidebar);
+        }
+
+        // Close sidebar when pressing Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !body.classList.contains('collapsed')) {
+                closeSidebar();
+            }
+        });
+
+        // Highlight active sidebar link
+        const currentPath = window.location.pathname;
+        sidebar.querySelectorAll('a').forEach(function (link) {
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('active');
+            }
+        });
+    });
+    </script>
+</body>
+</html>

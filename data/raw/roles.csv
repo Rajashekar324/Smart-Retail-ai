@@ -1,0 +1,4 @@
+id,name,permissions,created_at
+1,admin,"[""users.manage"", ""orders.manage"", ""products.manage"", ""analytics.view""]",2026-05-07 04:38:22.231827
+2,customer,"[""orders.create"", ""profile.edit"", ""cart.manage""]",2026-05-07 04:38:22.235259
+3,manager,"[""orders.manage"", ""products.view"", ""analytics.view""]",2026-05-07 04:38:22.236880

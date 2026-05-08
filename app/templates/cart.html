@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container section">
+  <div class="section-head"><h2>My Cart</h2><p>Review items added from the product page or chatbot and place one combined order.</p></div>
+  <div class="order-list">
+    {% for cart_item, product in items %}
+    <div class="order-card glow-card order-card-grid">
+      <a href="/product/{{ product.id }}"><h3>{{ product.name }}</h3><p>{{ product.category }}</p><p>Qty: {{ cart_item.quantity }}</p></a>
+      <div>
+        <strong>₹{{ '%.0f'|format(product.price) }}</strong>
+        <p>Subtotal: ₹{{ '%.0f'|format(product.price * cart_item.quantity) }}</p>
+      </div>
+      <div class="order-actions-inline">
+        <a class="btn btn-outline" href="/product/{{ product.id }}">View Product</a>
+        <form method="post" action="/cart/remove/{{ product.id }}"><button class="btn danger-btn" type="submit">Remove</button></form>
+      </div>
+    </div>
+    {% else %}
+    <p>Your cart is empty.</p>
+    {% endfor %}
+  </div>
+
+  <div class="detail-card total-box">
+    <h3>Total</h3>
+    <p>₹{{ '%.0f'|format(total) }}</p>
+  </div>
+
+  {% if items %}
+  <div class="detail-card" style="margin-top:20px;">
+    <h3>Place Order From Cart</h3>
+    <form method="post" action="/cart/checkout" class="checkout-form">
+      <input type="text" name="customer_name" placeholder="Full Name" value="{{ user.name }}" required />
+      <input type="text" name="phone" placeholder="Phone Number" value="{{ user.phone or '' }}" required />
+      <textarea name="address" placeholder="Delivery Address" required></textarea>
+      <div class="grid-three">
+        <input type="text" name="city" placeholder="City" required />
+        <input type="text" name="state" placeholder="State" required />
+        <input type="text" name="pincode" placeholder="Pincode" required />
+      </div>
+      <div class="payment-box">
+        <label><input type="radio" name="payment_method" value="Online" checked /> Online Payment</label>
+        <label><input type="radio" name="payment_method" value="COD" /> Cash on Delivery</label>
+        <p class="muted">Demo payment gateway enabled. Online payment marks the combined cart order as paid instantly.</p>
+      </div>
+      <button class="btn" type="submit">Place Order</button>
+    </form>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

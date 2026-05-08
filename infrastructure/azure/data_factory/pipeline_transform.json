@@ -1,0 +1,208 @@
+{
+  "name": "Transform_Staged_Pipeline",
+  "properties": {
+    "description": "Transform staged data using Databricks PySpark with Delta Lake",
+    "activities": [
+      {
+        "name": "Transform_Ordes_Fact",
+        "description": "Transform orders data into fact table",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/transform_orders_fact",
+          "baseParameters": {
+            "input_path": "abfss://raw@<storage>.dfs.core.windows.net/orders",
+            "output_path": "abfss://staging@<storage>.dfs.core.windows.net/fact_orders",
+            "execution_date": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
+          },
+          "libraries": [
+            {
+              "pypi": {
+                "package": "delta-spark==2.4.0"
+              }
+            }
+          ]
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Transform_Products_Dim",
+        "description": "Transform products into slowly changing dimension",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/transform_products_dim",
+          "baseParameters": {
+            "input_path": "abfss://raw@<storage>.dfs.core.windows.net/products",
+            "output_path": "abfss://staging@<storage>.dfs.core.windows.net/dim_products",
+            "scd_type": "2"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Transform_Customers_Dim",
+        "description": "Transform customers into dimension table",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/transform_customers_dim",
+          "baseParameters": {
+            "input_path": "abfss://raw@<storage>.dfs.core.windows.net/users",
+            "output_path": "abfss://staging@<storage>.dfs.core.windows.net/dim_customers"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Transform_Support_Tickets",
+        "description": "Transform support tickets with sentiment analysis",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/transform_support_tickets",
+          "baseParameters": {
+            "input_path": "abfss://raw@<storage>.dfs.core.windows.net/support_tickets",
+            "output_path": "abfss://staging@<storage>.dfs.core.windows.net/fact_support_tickets",
+            "enable_sentiment": "true"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Validate_Quality",
+        "description": "Run data quality checks",
+        "type": "DatabricksNotebook",
+        "dependsOn": [
+          {
+            "activity": "Transform_Ordes_Fact",
+            "dependencyConditions": ["Succeeded"]
+          },
+          {
+            "activity": "Transform_Products_Dim",
+            "dependencyConditions": ["Succeeded"]
+          },
+          {
+            "activity": "Transform_Customers_Dim",
+            "dependencyConditions": ["Succeeded"]
+          },
+          {
+            "activity": "Transform_Support_Tickets",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/data_quality_checks",
+          "baseParameters": {
+            "staging_path": "abfss://staging@<storage>.dfs.core.windows.net",
+            "quality_threshold": "95"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "If_Quality_Pass",
+        "description": "Conditional execution based on quality checks",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "Validate_Quality",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "userProperties": [],
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(activity('Validate_Quality').output.runOutput.quality_passed, 'true')",
+            "type": "Expression"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "Send_Quality_Alert",
+              "description": "Alert on data quality failure",
+              "type": "WebActivity",
+              "dependsOn": [],
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "userProperties": [],
+              "typeProperties": {
+                "method": "POST",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "url": "https://hooks.slack.com/services/<webhook-url>",
+                "body": {
+                  "text": "🚨 Data quality checks failed. Review staging data."
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "folder": {
+      "name": "SmartRetail/Transform"
+    },
+    "annotations": ["staging", "databricks", "delta", "scd"]
+  }
+}

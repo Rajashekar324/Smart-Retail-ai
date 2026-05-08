@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container section admin-section">
+    <div class="section-head">
+        <h2><i class="fas fa-chart-pie"></i> Sentiment Analytics</h2>
+        <p>Azure AI Language Text Analytics - Customer Review Insights</p>
+    </div>
+
+    <!-- Service Status -->
+    <div id="serviceStatus" class="status-banner loading">
+        <i class="fas fa-circle-notch fa-spin"></i> Loading analytics data...
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="analytics-grid">
+        <div class="analytics-card">
+            <div class="card-icon positive"><i class="fas fa-smile"></i></div>
+            <div class="card-content">
+                <h3 id="positivePct">--%</h3>
+                <p>Positive Reviews</p>
+                <span id="positiveCount" class="subtext">-- reviews</span>
+            </div>
+        </div>
+        <div class="analytics-card">
+            <div class="card-icon neutral"><i class="fas fa-meh"></i></div>
+            <div class="card-content">
+                <h3 id="neutralPct">--%</h3>
+                <p>Neutral Reviews</p>
+                <span id="neutralCount" class="subtext">-- reviews</span>
+            </div>
+        </div>
+        <div class="analytics-card">
+            <div class="card-icon negative"><i class="fas fa-frown"></i></div>
+            <div class="card-content">
+                <h3 id="negativePct">--%</h3>
+                <p>Negative Reviews</p>
+                <span id="negativeCount" class="subtext">-- reviews</span>
+            </div>
+        </div>
+        <div class="analytics-card">
+            <div class="card-icon total"><i class="fas fa-comments"></i></div>
+            <div class="card-content">
+                <h3 id="totalReviews">--</h3>
+                <p>Total Reviews</p>
+                <span id="avgRating" class="subtext">Avg: -- ★</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <div class="chart-container">
+            <h3><i class="fas fa-chart-pie"></i> Sentiment Distribution</h3>
+            <canvas id="sentimentPieChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3><i class="fas fa-chart-line"></i> Sentiment Trends (30 Days)</h3>
+            <canvas id="sentimentTrendChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Recent Reviews Section -->
+    <div class="reviews-section">
+        <div class="section-header">
+            <h3><i class="fas fa-list"></i> Recent Customer Reviews</h3>
+            <button class="btn btn-sm btn-refresh" onclick="loadAnalytics()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        <div id="recentReviewsList" class="reviews-table-container">
+            <p class="loading-text">Loading recent reviews...</p>
+        </div>
+    </div>
+
+    <!-- Service Health -->
+    <div class="service-health-section">
+        <h3><i class="fas fa-heartbeat"></i> Service Health</h3>
+        <div id="serviceHealthDetails" class="health-details">
+            <p class="loading-text">Checking service status...</p>
+        </div>
+    </div>
+</section>
+
+<style>
+.admin-section {
+    max-width: 1400px;
+}
+
+.status-banner {
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    font-weight: 500;
+}
+.status-banner.loading {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+.status-banner.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+.status-banner.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.analytics-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.analytics-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.card-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+.card-icon.positive { background: #d1fae5; color: #065f46; }
+.card-icon.neutral { background: #e5e7eb; color: #374151; }
+.card-icon.negative { background: #fee2e2; color: #991b1b; }
+.card-icon.total { background: #dbeafe; color: #1e40af; }
+
+.card-content h3 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+}
+.card-content p {
+    margin: 4px 0;
+    color: #6b7280;
+    font-weight: 500;
+}
+.subtext {
+    font-size: 0.85em;
+    color: #9ca3af;
+}
+
+.charts-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+    margin-bottom: 30px;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.chart-container canvas {
+    width: 100% !important;
+    max-height: 360px;
+}
+.chart-container h3 {
+    margin: 0 0 20px 0;
+    font-size: 1.1em;
+    color: #374151;
+}
+
+.reviews-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.section-header h3 {
+    margin: 0;
+    color: #374151;
+}
+.btn-refresh {
+    background: #00bb4e;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-refresh:hover {
+    background: #83701b;
+}
+
+.reviews-table-container {
+    overflow-x: auto;
+}
+
+.reviews-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.reviews-table th,
+.reviews-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+.reviews-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+}
+.reviews-table tr:hover {
+    background: #f9fafb;
+}
+
+.review-sentiment-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 600;
+}
+.sentiment-positive { background: #d1fae5; color: #065f46; }
+.sentiment-neutral { background: #e5e7eb; color: #374151; }
+.sentiment-negative { background: #fee2e2; color: #991b1b; }
+
+.rating-stars {
+    color: #fbbf24;
+}
+
+.service-health-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.service-health-section h3 {
+    margin: 0 0 16px 0;
+    color: #374151;
+}
+
+.health-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+.health-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+.health-item i {
+    font-size: 20px;
+}
+.health-item.connected i { color: #10b981; }
+.health-item.disconnected i { color: #ef4444; }
+.health-item span {
+    font-size: 0.9em;
+    color: #4b5563;
+}
+
+.loading-text {
+    color: #9ca3af;
+    font-style: italic;
+    text-align: center;
+    padding: 40px;
+}
+
+.review-text-preview {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let sentimentPieChart = null;
+let sentimentTrendChart = null;
+
+// Load analytics data
+async function loadAnalytics() {
+    const statusBanner = document.getElementById('serviceStatus');
+    statusBanner.className = 'status-banner loading';
+    statusBanner.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Loading analytics data...';
+    
+    try {
+        const response = await fetch('/api/admin/sentiment-analytics');
+        const data = await response.json();
+        
+        if (response.ok) {
+            updateMetrics(data.analytics);
+            updateCharts(data.analytics);
+            updateRecentReviews(data.recent_reviews);
+            updateServiceHealth(data.service_health);
+            
+            statusBanner.className = 'status-banner success';
+            statusBanner.innerHTML = `<i class="fas fa-check-circle"></i> Data loaded successfully - ${new Date().toLocaleString()}`;
+        } else {
+            throw new Error(data.detail || 'Failed to load analytics');
+        }
+    } catch (error) {
+        statusBanner.className = 'status-banner error';
+        statusBanner.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${error.message}`;
+        console.error('Error loading analytics:', error);
+    }
+}
+
+// Update key metrics
+function updateMetrics(analytics) {
+    if (analytics.error) return;
+    
+    const { percentages, sentiment_distribution, total_reviews, average_rating } = analytics;
+    
+    document.getElementById('positivePct').textContent = percentages?.positive?.toFixed(1) + '%' || '0%';
+    document.getElementById('neutralPct').textContent = percentages?.neutral?.toFixed(1) + '%' || '0%';
+    document.getElementById('negativePct').textContent = percentages?.negative?.toFixed(1) + '%' || '0%';
+    document.getElementById('totalReviews').textContent = total_reviews || 0;
+    document.getElementById('avgRating').textContent = `Avg: ${average_rating?.toFixed(1) || '--'} ★`;
+    
+    document.getElementById('positiveCount').textContent = `${sentiment_distribution?.positive || 0} reviews`;
+    document.getElementById('neutralCount').textContent = `${(sentiment_distribution?.neutral || 0) + (sentiment_distribution?.mixed || 0)} reviews`;
+    document.getElementById('negativeCount').textContent = `${sentiment_distribution?.negative || 0} reviews`;
+}
+
+// Update charts
+function updateCharts(analytics) {
+    if (analytics.error) return;
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js is unavailable; metrics and reviews will still be shown.');
+        const pieCanvas = document.getElementById('sentimentPieChart');
+        const trendCanvas = document.getElementById('sentimentTrendChart');
+        if (pieCanvas) pieCanvas.replaceWith(document.createTextNode('Chart library unavailable.'));
+        if (trendCanvas) trendCanvas.replaceWith(document.createTextNode('Chart library unavailable.'));
+        return;
+    }
+    
+    const { sentiment_distribution, trends } = analytics;
+    
+    // Pie Chart - Sentiment Distribution
+    const pieCtx = document.getElementById('sentimentPieChart').getContext('2d');
+    
+    if (sentimentPieChart) {
+        sentimentPieChart.destroy();
+    }
+    
+    sentimentPieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Positive', 'Neutral', 'Negative'],
+            datasets: [{
+                data: [
+                    sentiment_distribution?.positive || 0,
+                    (sentiment_distribution?.neutral || 0) + (sentiment_distribution?.mixed || 0),
+                    sentiment_distribution?.negative || 0
+                ],
+                backgroundColor: ['#10b981', '#6b7280', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+    
+    // Line Chart - Sentiment Trends
+    const trendCtx = document.getElementById('sentimentTrendChart').getContext('2d');
+    
+    if (sentimentTrendChart) {
+        sentimentTrendChart.destroy();
+    }
+    
+    const labels = trends?.map(t => t.date) || [];
+    const positiveData = trends?.map(t => t.positive) || [];
+    const neutralData = trends?.map(t => t.neutral) || [];
+    const negativeData = trends?.map(t => t.negative) || [];
+    
+    sentimentTrendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Positive',
+                    data: positiveData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Neutral',
+                    data: neutralData,
+                    borderColor: '#6b7280',
+                    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Negative',
+                    data: negativeData,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Update recent reviews table
+function updateRecentReviews(reviews) {
+    const container = document.getElementById('recentReviewsList');
+    
+    if (!reviews || reviews.length === 0) {
+        container.innerHTML = '<p class="loading-text">No reviews yet</p>';
+        return;
+    }
+    
+    const tableHtml = `
+        <table class="reviews-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>User</th>
+                    <th>Rating</th>
+                    <th>Sentiment</th>
+                    <th>Review</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reviews.map(review => `
+                    <tr>
+                        <td>${review.product_name || 'Unknown'}</td>
+                        <td>${review.user_name || 'User #' + review.user_id}</td>
+                        <td class="rating-stars">
+                            ${Array(review.rating).fill('★').join('')}
+                        </td>
+                        <td>
+                            <span class="review-sentiment-badge sentiment-${review.sentiment}">
+                                ${review.sentiment}
+                            </span>
+                        </td>
+                        <td class="review-text-preview" title="${review.review_text}">
+                            ${review.review_text}
+                        </td>
+                        <td>${new Date(review.created_at).toLocaleDateString()}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = tableHtml;
+}
+
+// Update service health
+function updateServiceHealth(health) {
+    const container = document.getElementById('serviceHealthDetails');
+    
+    const mongodbStatus = health?.mongodb_connected ? 'connected' : 'disconnected';
+    const azureStatus = health?.azure_text_analytics?.enabled ? 'connected' : 'disconnected';
+    
+    container.innerHTML = `
+        <div class="health-item ${mongodbStatus}">
+            <i class="fas fa-${mongodbStatus === 'connected' ? 'check-circle' : 'times-circle'}"></i>
+            <span>MongoDB: ${mongodbStatus === 'connected' ? 'Connected' : 'Disconnected'}</span>
+        </div>
+        <div class="health-item ${azureStatus}">
+            <i class="fas fa-${azureStatus === 'connected' ? 'check-circle' : 'times-circle'}"></i>
+            <span>Azure Text Analytics: ${azureStatus === 'connected' ? 'Enabled' : 'Disabled'}</span>
+        </div>
+    `;
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadAnalytics);
+</script>
+{% endblock %}

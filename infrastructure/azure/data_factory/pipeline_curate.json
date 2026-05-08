@@ -1,0 +1,222 @@
+{
+  "name": "Curate_Analytics_Pipeline",
+  "properties": {
+    "description": "Create curated analytics datasets for Power BI and ML models",
+    "activities": [
+      {
+        "name": "Create_Sales_Summary",
+        "description": "Create daily/weekly/monthly sales aggregates",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/curate_sales_summary",
+          "baseParameters": {
+            "staging_path": "abfss://staging@<storage>.dfs.core.windows.net",
+            "curated_path": "abfss://curated@<storage>.dfs.core.windows.net",
+            "aggregations": "daily,weekly,monthly"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Create_Customer_360",
+        "description": "Create unified customer profile with RFM analysis",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/curate_customer_360",
+          "baseParameters": {
+            "staging_path": "abfss://staging@<storage>.dfs.core.windows.net",
+            "curated_path": "abfss://curated@<storage>.dfs.core.windows.net",
+            "enable_rfm": "true",
+            "enable_churn": "true"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Create_Inventory_Analytics",
+        "description": "Create inventory metrics and stock predictions",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/curate_inventory_analytics",
+          "baseParameters": {
+            "staging_path": "abfss://staging@<storage>.dfs.core.windows.net",
+            "curated_path": "abfss://curated@<storage>.dfs.core.windows.net"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Create_Anomaly_Dataset",
+        "description": "Prepare anomaly detection training dataset",
+        "type": "DatabricksNotebook",
+        "dependsOn": [
+          {
+            "activity": "Create_Sales_Summary",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/curate_anomaly_dataset",
+          "baseParameters": {
+            "staging_path": "abfss://staging@<storage>.dfs.core.windows.net",
+            "curated_path": "abfss://curated@<storage>.dfs.core.windows.net",
+            "lookback_days": "90"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Export_To_PowerBI",
+        "description": "Export curated data to SQL DW for Power BI",
+        "type": "Copy",
+        "dependsOn": [
+          {
+            "activity": "Create_Sales_Summary",
+            "dependencyConditions": ["Succeeded"]
+          },
+          {
+            "activity": "Create_Customer_360",
+            "dependencyConditions": ["Succeeded"]
+          },
+          {
+            "activity": "Create_Inventory_Analytics",
+            "dependencyConditions": ["Succeeded"]
+          },
+          {
+            "activity": "Create_Anomaly_Dataset",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "1.00:00:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "source": {
+            "type": "ParquetSource",
+            "storeSettings": {
+              "type": "AzureBlobFSReadSettings",
+              "recursive": true
+            }
+          },
+          "sink": {
+            "type": "SqlDWSink",
+            "preCopyScript": "TRUNCATE TABLE [curated].[sales_summary]",
+            "writeBehavior": "Upsert",
+            "upsertSettings": {
+              "keys": ["date_key", "product_id"],
+              "interimSchema": "temp"
+            }
+          },
+          "enableStaging": false,
+          "parallelCopies": 8,
+          "dataIntegrationUnits": 8
+        },
+        "inputs": [
+          {
+            "referenceName": "ADLS_Curated_Parquet",
+            "type": "DatasetReference",
+            "parameters": {
+              "tableName": "sales_summary"
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "referenceName": "Synapse_SQLDW",
+            "type": "DatasetReference",
+            "parameters": {
+              "tableName": "sales_summary",
+              "schemaName": "curated"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Optimize_Delta_Tables",
+        "description": "VACUUM and OPTIMIZE Delta tables",
+        "type": "DatabricksNotebook",
+        "dependsOn": [
+          {
+            "activity": "Export_To_PowerBI",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "notebookPath": "/Shared/SmartRetail/optimize_delta_tables",
+          "baseParameters": {
+            "curated_path": "abfss://curated@<storage>.dfs.core.windows.net",
+            "retention_hours": "168"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks",
+          "type": "LinkedServiceReference"
+        }
+      }
+    ],
+    "folder": {
+      "name": "SmartRetail/Curate"
+    },
+    "annotations": ["curated", "analytics", "synapse", "powerbi"]
+  }
+}

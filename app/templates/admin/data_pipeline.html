@@ -1,0 +1,699 @@
+{% extends "base.html" %}
+
+{% block title %}Azure Data Pipeline{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Animated gradient background */
+    .pipeline-container {
+        background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    /* Glassmorphism cards */
+    .neon-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 
+                    inset 0 0 20px rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .neon-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15),
+                    inset 0 0 30px rgba(255, 255, 255, 0.6);
+    }
+    
+    /* Header with rainbow gradient */
+    .pipeline-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+        border-radius: 20px;
+        padding: 30px 35px;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+    .pipeline-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+        animation: shimmer 3s infinite;
+    }
+    @keyframes shimmer {
+        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+        100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+    .pipeline-header h2, .pipeline-header p {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Status badge */
+    .status-glow {
+        background: linear-gradient(135deg, #00b894, #00cec9);
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);
+        display: inline-block;
+    }
+    
+    /* Horizontal Flow Layout */
+    .flow-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0;
+        padding: 40px 20px;
+        position: relative;
+        overflow-x: auto;
+    }
+    .flow-container::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 10%;
+        right: 10%;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c);
+        border-radius: 2px;
+        z-index: 0;
+        transform: translateY(-50%);
+    }
+    .flow-box {
+        background: white;
+        border-radius: 20px;
+        padding: 25px 30px;
+        text-align: center;
+        min-width: 160px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+        border: 3px solid transparent;
+    }
+    .flow-box::before {
+        content: '';
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        right: -3px;
+        bottom: -3px;
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        border-radius: 23px;
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .flow-box:hover::before {
+        opacity: 1;
+    }
+    .flow-box:hover {
+        transform: scale(1.05);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    .flow-box.bronze::after { background: linear-gradient(90deg, #cd7f32, #b87333); }
+    .flow-box.silver::after { background: linear-gradient(90deg, #c0c0c0, #a8a8a8); }
+    .flow-box.gold::after { background: linear-gradient(90deg, #ffd700, #ffb347); }
+    
+    .flow-arrow {
+        font-size: 2.5rem;
+        color: white;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        animation: pulse 2s infinite;
+        flex-shrink: 0;
+        margin: 0 10px;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.1); }
+    }
+    
+    /* Metric Blocks - Modern Card Style (Data Pipeline Specific) */
+    .pipeline-container .metric-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 20px !important;
+        margin-bottom: 30px !important;
+    }
+
+    .pipeline-container .metric-card {
+        border-radius: 20px !important;
+        padding: 30px 25px !important;
+        text-align: center !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important;
+        transition: all 0.3s ease !important;
+        position: relative !important;
+        overflow: hidden !important;
+        width: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .pipeline-container .metric-card:hover {
+        transform: translateY(-5px) !important;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15) !important;
+    }
+
+    /* Individual card colors */
+    .pipeline-container .metric-card:nth-child(1) {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+    }
+    .pipeline-container .metric-card:nth-child(2) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        color: white !important;
+    }
+    .pipeline-container .metric-card:nth-child(3) {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+        color: white !important;
+    }
+    .pipeline-container .metric-card:nth-child(4) {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+        color: white !important;
+    }
+    .pipeline-container .metric-card:nth-child(5) {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important;
+        color: white !important;
+    }
+    .pipeline-container .metric-card:nth-child(6) {
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%) !important;
+        color: white !important;
+    }
+
+    .pipeline-container .metric-card .icon {
+        font-size: 2rem !important;
+        margin-bottom: 12px !important;
+        opacity: 0.9 !important;
+        display: block !important;
+    }
+
+    .pipeline-container .metric-card .number {
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        line-height: 1.2 !important;
+        margin-bottom: 8px !important;
+        color: white !important;
+        -webkit-text-fill-color: white !important;
+    }
+
+    .pipeline-container .metric-card .label {
+        font-size: 0.85rem !important;
+        opacity: 0.9 !important;
+        font-weight: 500 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: white !important;
+    }
+    
+    /* Control panel */
+    .controls-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 25px;
+        margin-bottom: 25px;
+    }
+    
+    /* Rainbow buttons */
+    .btn-rainbow {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+        background-size: 200% 200%;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        cursor: pointer;
+        width: 100%;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s ease;
+        animation: gradientMove 3s ease infinite;
+    }
+    @keyframes gradientMove {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    .btn-rainbow:hover {
+        transform: scale(1.02) translateY(-2px);
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+    }
+    .btn-rainbow:disabled {
+        background: #6c757d;
+        animation: none;
+        cursor: not-allowed;
+    }
+    
+    .btn-action {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+        padding: 10px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .btn-action:hover {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    /* Quality score with glow */
+    .quality-circle {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin: 0 auto 15px;
+        background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+        color: white;
+        box-shadow: 0 5px 25px rgba(0, 184, 148, 0.4);
+        animation: glow 2s ease-in-out infinite alternate;
+    }
+    @keyframes glow {
+        from { box-shadow: 0 5px 25px rgba(0, 184, 148, 0.4); }
+        to { box-shadow: 0 5px 40px rgba(0, 184, 148, 0.6); }
+    }
+    
+    /* Tabs with neon effect */
+    .tab-container {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .tab-btn {
+        padding: 12px 25px;
+        border-radius: 25px;
+        border: none;
+        background: white;
+        color: #667eea;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    .tab-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+    }
+    .tab-btn.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Data table styling */
+    .data-table-container {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+    .data-table {
+        width: 100%;
+        font-size: 0.9rem;
+        border-collapse: collapse;
+    }
+    .data-table th {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+    }
+    .data-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .data-table tr:hover {
+        background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+    }
+    
+    .select-styled {
+        padding: 12px 15px;
+        border-radius: 10px;
+        border: 2px solid #e0e0e0;
+        width: 100%;
+        margin-bottom: 15px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+    .select-styled:focus {
+        border-color: #667eea;
+        outline: none;
+    }
+    
+    /* Progress bar */
+    .progress-container {
+        background: #f0f0f0;
+        border-radius: 10px;
+        height: 25px;
+        overflow: hidden;
+        margin-top: 20px;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .progress-bar {
+        height: 100%;
+        border-radius: 10px;
+        background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c);
+        background-size: 300% 100%;
+        transition: width 0.5s ease;
+        animation: gradientFlow 2s ease infinite;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    @keyframes gradientFlow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    
+    /* Log entries */
+    .log-entry {
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+        padding: 10px 15px;
+        border-left: 4px solid #667eea;
+        background: linear-gradient(90deg, rgba(102, 126, 234, 0.1), transparent);
+        margin-bottom: 8px;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .pipeline-container .metric-grid { grid-template-columns: repeat(3, 1fr) !important; }
+        .controls-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+        .pipeline-container .metric-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    }
+    
+    /* Ensure tables fill available space */
+    .pipeline-container .neon-card,
+    .pipeline-container table {
+        width: 100%;
+    }
+    
+    .pipeline-container td,
+    .pipeline-container th {
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pipeline-container">
+    <div style="margin: 0 auto; padding: 20px;">
+        
+        <!-- Vibrant Header -->
+        <div class="pipeline-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 2rem;"><i class="fas fa-cloud"></i> Azure Data Pipeline</h2>
+                    <p style="margin: 10px 0 0 0; opacity: 0.95; font-size: 1.1rem;">✨ Live Data Flow: Bronze → Silver → Gold</p>
+                </div>
+                <div style="text-align: center;">
+                    <span id="pipelineStatus" class="status-glow">Ready</span>
+                    <div style="font-size: 0.8rem; margin-top: 8px; opacity: 0.9;" id="lastRun">Last run: Never</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Horizontal Data Flow -->
+        <div class="neon-card">
+            <h3 style="margin-bottom: 20px; color: #667eea;"><i class="fas fa-sitemap"></i> Data Architecture Flow</h3>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0; padding: 20px; position: relative;">
+                <!-- Connecting Line -->
+                <div style="position: absolute; top: 50%; left: 5%; right: 5%; height: 6px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c, #ffd700); border-radius: 3px; transform: translateY(-50%); z-index: 0;"></div>
+                
+                <!-- Source -->
+                <div style="background: white; border-radius: 15px; padding: 20px 25px; text-align: center; min-width: 140px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1; border: 2px solid #667eea;">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">💾</div>
+                    <div style="font-weight: 700; color: #333; font-size: 0.95rem;">SQLite Source</div>
+                    <div style="font-size: 0.75rem; color: #28a745; margin-top: 5px;">● Live</div>
+                </div>
+                
+                <!-- Arrow -->
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 1; margin: 0 5px; box-shadow: 0 3px 10px rgba(102,126,234,0.4);">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                
+                <!-- Bronze -->
+                <div style="background: white; border-radius: 15px; padding: 20px 25px; text-align: center; min-width: 140px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1; border: 2px solid #cd7f32;">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">🥉</div>
+                    <div style="font-weight: 700; color: #cd7f32; font-size: 0.95rem;">Bronze Layer</div>
+                    <div id="rawCount" style="font-size: 0.75rem; color: #6c757d; margin-top: 5px;">- records</div>
+                </div>
+                
+                <!-- Arrow -->
+                <div style="background: linear-gradient(135deg, #764ba2, #f093fb); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 1; margin: 0 5px; box-shadow: 0 3px 10px rgba(118,75,162,0.4);">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                
+                <!-- Silver -->
+                <div style="background: white; border-radius: 15px; padding: 20px 25px; text-align: center; min-width: 140px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1; border: 2px solid #a8a8a8;">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">🥈</div>
+                    <div style="font-weight: 700; color: #a8a8a8; font-size: 0.95rem;">Silver Layer</div>
+                    <div id="stagingCount" style="font-size: 0.75rem; color: #6c757d; margin-top: 5px;">- records</div>
+                </div>
+                
+                <!-- Arrow -->
+                <div style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 1; margin: 0 5px; box-shadow: 0 3px 10px rgba(240,147,251,0.4);">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                
+                <!-- Gold -->
+                <div style="background: white; border-radius: 15px; padding: 20px 25px; text-align: center; min-width: 140px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1; border: 2px solid #ffd700;">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">🥇</div>
+                    <div style="font-weight: 700; color: #daa520; font-size: 0.95rem;">Gold Layer</div>
+                    <div id="curatedCount" style="font-size: 0.75rem; color: #6c757d; margin-top: 5px;">- records</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Blocks Grid -->
+        <div class="metric-grid">
+            <div class="metric-card">
+                <i class="fas fa-rupee-sign icon"></i>
+                <div class="number" id="metricRevenue">₹0</div>
+                <div class="label">Total Revenue</div>
+            </div>
+            <div class="metric-card">
+                <i class="fas fa-shopping-cart icon"></i>
+                <div class="number" id="metricOrders">0</div>
+                <div class="label">Orders Processed</div>
+            </div>
+            <div class="metric-card">
+                <i class="fas fa-chart-line icon"></i>
+                <div class="number" id="metricAOV">₹0</div>
+                <div class="label">Avg Order Value</div>
+            </div>
+            <div class="metric-card">
+                <i class="fas fa-users icon"></i>
+                <div class="number" id="metricCustomers">0</div>
+                <div class="label">Active Customers</div>
+            </div>
+            <div class="metric-card">
+                <i class="fas fa-crown icon"></i>
+                <div class="number" id="metricVIP">0</div>
+                <div class="label">VIP Customers</div>
+            </div>
+            <div class="metric-card">
+                <i class="fas fa-exclamation-triangle icon"></i>
+                <div class="number" id="metricAnomalies">0</div>
+                <div class="label">Anomalies Detected</div>
+            </div>
+        </div>
+
+        <!-- Crazy Controls & Quality -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 25px;">
+            <!-- Pipeline Controls -->
+            <div style="background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-radius: 20px; padding: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 0 20px rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.3);">
+                <h3 style="margin-bottom: 20px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.3rem;"><i class="fas fa-play-circle"></i> 🚀 Pipeline Controls</h3>
+                
+                <!-- Rainbow Run Button -->
+                <button id="btnRun" onclick="runPipeline()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%); background-size: 200% 200%; color: white; border: none; padding: 18px 35px; border-radius: 15px; font-weight: 700; font-size: 1.2rem; cursor: pointer; width: 100%; box-shadow: 0 5px 25px rgba(102,126,234,0.5); transition: all 0.3s ease;">
+                    <i class="fas fa-play"></i> ⚡ Run Full Pipeline
+                </button>
+                
+                <!-- Colorful Action Buttons -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 20px;">
+                    <button onclick="refreshData()" style="background: linear-gradient(135deg, #00b894, #00cec9); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 15px rgba(0,184,148,0.3); transition: transform 0.2s;">
+                        <i class="fas fa-sync-alt"></i> 🔄 Refresh
+                    </button>
+                    <button onclick="exportData()" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 15px rgba(79,172,254,0.3); transition: transform 0.2s;">
+                        <i class="fas fa-download"></i> 📥 Export
+                    </button>
+                    <button onclick="toggleAuto()" style="background: linear-gradient(135deg, #fa709a, #fee140); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 15px rgba(250,112,154,0.3); transition: transform 0.2s;">
+                        <i class="fas fa-clock"></i> ⏰ Auto: <span id="autoStatus">OFF</span>
+                    </button>
+                </div>
+
+                <!-- Mode Toggle -->
+                <div style="margin-top: 15px; padding: 10px; background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); border-radius: 12px; border: 2px solid rgba(102,126,234,0.3);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: #6c757d; font-weight: 600;">
+                            <i class="fas fa-database"></i> Data Source:
+                        </span>
+                        <span id="currentModeIndicator" style="font-size: 0.85rem; font-weight: 700; color: #667eea;">
+                            🔄 Live Database
+                        </span>
+                    </div>
+                    <button id="pipelineModeBtn" onclick="switchPipelineMode(pipelineMode === 'dynamic' ? 'static' : 'dynamic')" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 15px rgba(155,89,182,0.3); transition: transform 0.2s; width: 100%;">
+                        <i class="fas fa-exchange-alt"></i> Switch to CSV (Static)
+                    </button>
+                </div>
+                
+                <!-- Animated Progress Bar -->
+                <div id="progressArea" style="display: none; margin-top: 20px;">
+                    <div style="background: #f0f0f0; border-radius: 12px; height: 30px; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);">
+                        <div id="progressBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe); background-size: 300% 100%; border-radius: 12px; transition: width 0.5s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700;">0%</div>
+                    </div>
+                    <small id="progressText" style="color: #6c757d; display: none; margin-top: 10px; font-size: 0.9rem;">🚀 Processing pipeline...</small>
+                </div>
+            </div>
+            
+            <!-- Data Quality Score -->
+            <div style="background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-radius: 20px; padding: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 0 20px rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.3); text-align: center;">
+                <h3 style="margin-bottom: 20px; background: linear-gradient(135deg, #00b894, #00cec9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.3rem;"><i class="fas fa-award"></i> 🏆 Data Quality</h3>
+                
+                <!-- Glowing Score Circle -->
+                <div id="qualityScore" style="width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; margin: 0 auto 20px; background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); color: white; box-shadow: 0 5px 25px rgba(0,184,148,0.5), 0 0 50px rgba(0,184,148,0.3);">--</div>
+                
+                <!-- Stats Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div style="background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); padding: 15px; border-radius: 12px;">
+                        <div style="font-size: 0.75rem; color: #6c757d; margin-bottom: 5px;">📊 Checks</div>
+                        <div style="font-weight: bold; font-size: 1.4rem; color: #667eea;" id="totalChecks">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, rgba(0,184,148,0.1), rgba(0,206,201,0.1)); padding: 15px; border-radius: 12px;">
+                        <div style="font-size: 0.75rem; color: #28a745; margin-bottom: 5px;">✅ Passed</div>
+                        <div style="font-weight: bold; font-size: 1.4rem; color: #28a745;" id="passedChecks">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, rgba(220,53,69,0.1), rgba(225,83,97,0.1)); padding: 15px; border-radius: 12px;">
+                        <div style="font-size: 0.75rem; color: #dc3545; margin-bottom: 5px;">❌ Failed</div>
+                        <div style="font-weight: bold; font-size: 1.4rem; color: #dc3545;" id="failedChecks">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Crazy Data Explorer -->
+        <div style="background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9)); backdrop-filter: blur(20px); border-radius: 25px; padding: 30px; box-shadow: 0 15px 50px rgba(102, 126, 234, 0.2), inset 0 0 30px rgba(255,255,255,0.5); border: 2px solid rgba(255,255,255,0.5);">
+            <h3 style="margin-bottom: 25px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.5rem;"><i class="fas fa-database"></i> 🔥 Data Explorer 🔥</h3>
+            
+            <!-- Crazy Colorful Tabs -->
+            <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;">
+                <button onclick="showTab('curatedTab', this)" id="btnGold" class="tab-btn" style="padding: 15px 25px; border-radius: 30px; border: none; background: linear-gradient(135deg, #ffd700, #ffb347); color: white; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4); transition: all 0.3s ease;">
+                    <i class="fas fa-star"></i> 🥇 Gold (Curated)
+                </button>
+                <button onclick="showTab('stagingTab', this)" id="btnSilver" class="tab-btn" style="padding: 15px 25px; border-radius: 30px; border: none; background: linear-gradient(135deg, #c0c0c0, #a8a8a8); color: white; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 20px rgba(192, 192, 192, 0.4); transition: all 0.3s ease;">
+                    <i class="fas fa-cog"></i> 🥈 Silver (Staging)
+                </button>
+                <button onclick="showTab('rawTab', this)" id="btnBronze" class="tab-btn" style="padding: 15px 25px; border-radius: 30px; border: none; background: linear-gradient(135deg, #cd7f32, #b87333); color: white; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 20px rgba(205, 127, 50, 0.4); transition: all 0.3s ease;">
+                    <i class="fas fa-database"></i> 🥉 Bronze (Raw)
+                </button>
+                <button onclick="showTab('logsTab', this)" id="btnLogs" class="tab-btn" style="padding: 15px 25px; border-radius: 30px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); transition: all 0.3s ease;">
+                    <i class="fas fa-terminal"></i> 🚀 Execution Logs
+                </button>
+            </div>
+            
+            <!-- Gold Tab -->
+            <div id="curatedTab" style="display: block;">
+                <select id="curatedSelect" onchange="loadTable('curated', this.value)" style="padding: 15px; border-radius: 15px; border: 3px solid #ffd700; width: 100%; margin-bottom: 20px; font-size: 1.1rem; background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,255,255,0.9)); color: #333;">
+                    <option value="sales_daily">📊 Sales Daily Summary</option>
+                    <option value="customer_360">👤 Customer 360 View</option>
+                    <option value="inventory_analytics">📦 Inventory Analytics</option>
+                    <option value="anomaly_features">⚠️ Anomaly Detection</option>
+                </select>
+                <div style="background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 3px solid #ffd700;">
+                    <table id="curatedTable" style="width: 100%; font-size: 0.95rem; border-collapse: collapse;">
+                        <thead><tr><th style="background: linear-gradient(135deg, #ffd700, #ffb347); color: white; padding: 15px; text-align: left; font-weight: 700;">Select a table to view data</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Silver Tab -->
+            <div id="stagingTab" style="display: none;">
+                <select id="stagingSelect" onchange="loadTable('staging', this.value)" style="padding: 15px; border-radius: 15px; border: 3px solid #c0c0c0; width: 100%; margin-bottom: 20px; font-size: 1.1rem; background: linear-gradient(135deg, rgba(192,192,192,0.1), rgba(255,255,255,0.9)); color: #333;">
+                    <option value="dim_customers">👤 Dim Customers (SCD2)</option>
+                    <option value="dim_products">📦 Dim Products (SCD2)</option>
+                    <option value="fact_orders">🛒 Fact Orders</option>
+                    <option value="fact_support_tickets">🎫 Fact Support Tickets</option>
+                </select>
+                <div style="background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 3px solid #c0c0c0;">
+                    <table id="stagingTable" style="width: 100%; font-size: 0.95rem; border-collapse: collapse;">
+                        <thead><tr><th style="background: linear-gradient(135deg, #c0c0c0, #a8a8a8); color: white; padding: 15px; text-align: left; font-weight: 700;">Select a table to view data</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Bronze Tab -->
+            <div id="rawTab" style="display: none;">
+                <select id="rawSelect" onchange="loadTable('raw', this.value)" style="padding: 15px; border-radius: 15px; border: 3px solid #cd7f32; width: 100%; margin-bottom: 20px; font-size: 1.1rem; background: linear-gradient(135deg, rgba(205,127,50,0.1), rgba(255,255,255,0.9)); color: #333;">
+                    <option value="orders">🛒 Raw Orders</option>
+                    <option value="products">📦 Raw Products</option>
+                    <option value="users">👤 Raw Users</option>
+                    <option value="support_tickets">🎫 Raw Support Tickets</option>
+                </select>
+                <div style="background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 3px solid #cd7f32;">
+                    <table id="rawTable" style="width: 100%; font-size: 0.95rem; border-collapse: collapse;">
+                        <thead><tr><th style="background: linear-gradient(135deg, #cd7f32, #b87333); color: white; padding: 15px; text-align: left; font-weight: 700;">Select a table to view data</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Logs Tab -->
+            <div id="logsTab" style="display: none;">
+                <div id="logsContent" style="max-height: 400px; overflow-y: auto; padding: 20px; background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(255,255,255,0.9)); border-radius: 20px; border: 3px solid #667eea;">
+                    <div style="text-align: center; color: #667eea; padding: 50px;">
+                        <i class="fas fa-rocket" style="font-size: 4rem; margin-bottom: 20px; color: #667eea;"></i>
+                        <p style="font-size: 1.2rem; font-weight: 600;">🚀 Run the pipeline to see execution logs 🚀</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/pipeline.js" defer></script>
+{% endblock %}

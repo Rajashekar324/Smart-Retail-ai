@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container section">
+    <div class="section-head">
+        <div>
+            <h2>Security Settings</h2>
+            <p>Manage security configurations and access controls.</p>
+        </div>
+        <div id="saveStatus" style="padding: 10px 20px; border-radius: 6px; display: none;"></div>
+    </div>
+
+    <div class="admin-grid">
+        <div class="detail-card">
+            <h3>Password Policy</h3>
+            <form id="passwordPolicyForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="strongPass" name="strong_passwords" {% if security_settings.strong_passwords.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="strongPass">Require Strong Passwords</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="passExpiry" name="password_expiry" {% if security_settings.password_expiry.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="passExpiry">Password Expiry (90 days)</label>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Minimum Password Length</label>
+                    <input type="number" id="minPassLength" name="min_password_length" value="{{ security_settings.min_password_length.setting_value }}" min="6" max="32" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                <button type="button" onclick="saveSecuritySettings()" class="btn" style="align-self: flex-start;">Save Policy</button>
+            </form>
+        </div>
+
+        <div class="detail-card">
+            <h3>Two-Factor Authentication</h3>
+            <form id="twoFactorForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="admin2FA" name="admin_2fa" {% if security_settings.admin_2fa.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="admin2FA">Require 2FA for Admin Users</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="singleSession" name="single_session" {% if security_settings.single_session.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="singleSession">Single Session Per User</label>
+                </div>
+                <button type="button" onclick="saveSecuritySettings()" class="btn" style="align-self: flex-start;">Configure 2FA</button>
+            </form>
+        </div>
+
+        <div class="detail-card">
+            <h3>Session Management</h3>
+            <form id="sessionForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Session Timeout (minutes)</label>
+                    <input type="number" id="sessionTimeout" name="session_timeout" value="{{ security_settings.session_timeout.setting_value }}" min="5" max="240" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="ipLock" name="ip_lock" style="width: 18px; height: 18px;">
+                    <label for="ipLock">IP Address Binding</label>
+                </div>
+                <button type="button" onclick="saveSecuritySettings()" class="btn" style="align-self: flex-start;">Save Session Settings</button>
+            </form>
+        </div>
+
+        <div class="detail-card">
+            <h3>Access Logs ({{ access_logs|length }} entries)</h3>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table style="width: 100%; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="padding: 10px; text-align: left;">Time</th>
+                            <th style="padding: 10px; text-align: left;">User ID</th>
+                            <th style="padding: 10px; text-align: left;">Action</th>
+                            <th style="padding: 10px; text-align: left;">Entity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in access_logs %}
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 10px;">{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '-' }}</td>
+                            <td style="padding: 10px;">{{ log.user_id or 'System' }}</td>
+                            <td style="padding: 10px;">{{ log.action }}</td>
+                            <td style="padding: 10px;">{{ log.entity_type }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="padding: 20px; text-align: center; color: #666;">No logs available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="refreshLogs()" class="btn btn-outline" style="margin-top: 15px;">Refresh Logs</button>
+        </div>
+
+        <div class="detail-card">
+            <h3>Active Sessions ({{ active_sessions|length }})</h3>
+            <div style="max-height: 200px; overflow-y: auto;">
+                <table style="width: 100%; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="padding: 10px; text-align: left;">User ID</th>
+                            <th style="padding: 10px; text-align: left;">Created</th>
+                            <th style="padding: 10px; text-align: left;">Expires</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in active_sessions %}
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 10px;">{{ session.user_id }}</td>
+                            <td style="padding: 10px;">{{ session.created_at.strftime('%Y-%m-%d %H:%M') if session.created_at else '-' }}</td>
+                            <td style="padding: 10px;">{{ session.expires_at.strftime('%H:%M') if session.expires_at else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="padding: 20px; text-align: center; color: #666;">No active sessions</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+async function saveSecuritySettings() {
+    const statusDiv = document.getElementById('saveStatus');
+    statusDiv.style.display = 'none';
+    
+    const settings = {
+        strong_passwords: document.getElementById('strongPass').checked.toString(),
+        password_expiry: document.getElementById('passExpiry').checked.toString(),
+        min_password_length: document.getElementById('minPassLength').value,
+        admin_2fa: document.getElementById('admin2FA').checked.toString(),
+        single_session: document.getElementById('singleSession').checked.toString(),
+        session_timeout: document.getElementById('sessionTimeout').value
+    };
+    
+    try {
+        const response = await fetch('/api/admin/security/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusDiv.textContent = 'Security settings saved!';
+            statusDiv.style.background = '#d1fae5';
+            statusDiv.style.color = '#065f46';
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        } else {
+            statusDiv.textContent = 'Error: ' + (data.error || 'Failed to save');
+            statusDiv.style.background = '#fee2e2';
+            statusDiv.style.color = '#991b1b';
+            statusDiv.style.display = 'block';
+        }
+    } catch (error) {
+        statusDiv.textContent = 'Error: ' + error.message;
+        statusDiv.style.background = '#fee2e2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.display = 'block';
+    }
+}
+
+async function refreshLogs() {
+    try {
+        const response = await fetch('/api/admin/security/logs');
+        const data = await response.json();
+        if (data.logs) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Failed to refresh logs:', error);
+    }
+}
+</script>
+{% endblock %}

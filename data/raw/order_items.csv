@@ -1,0 +1,20 @@
+id,order_id,product_id,product_name,size,quantity,unit_price
+1,19,1,Classic Black T-Shirt,S,1,799.0
+2,1,3,Slim Fit Blue Jeans,30,2,2199.0
+3,2,4,Denim Jacket,M,3,2499.0
+4,3,5,Floral Summer Dress,S,4,1799.0
+5,4,4,Denim Jacket,M,2,2499.0
+6,5,5,Floral Summer Dress,S,3,1799.0
+7,6,6,White Sneakers,7,4,2299.0
+8,7,5,Floral Summer Dress,S,2,1799.0
+9,8,6,White Sneakers,7,3,2299.0
+10,9,7,Formal Checked Shirt,M,4,1499.0
+11,10,6,White Sneakers,7,2,2299.0
+12,11,7,Formal Checked Shirt,M,3,1499.0
+13,12,8,Ethnic Kurta Set,S,4,2599.0
+14,13,7,Formal Checked Shirt,M,2,1499.0
+15,14,8,Ethnic Kurta Set,S,3,2599.0
+16,15,1,Classic Black T-Shirt,S,4,799.0
+17,16,8,Ethnic Kurta Set,S,2,2599.0
+18,17,1,Classic Black T-Shirt,S,3,799.0
+19,18,2,Urban Grey Hoodie,M,4,1899.0

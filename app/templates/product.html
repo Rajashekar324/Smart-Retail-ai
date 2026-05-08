@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container section product-page">
+  <div class="product-detail detail-card product-shell">
+    <div>
+      <img src="{{ product.image }}" alt="{{ product.name }}" />
+    </div>
+    <div class="stack-form">
+      <span class="category">{{ product.category }}</span>
+      <h2>{{ product.name }}</h2>
+      <p>{{ product.description }}</p>
+      <div class="price-banner">₹{{ '%.0f'|format(product.price) }}</div>
+      <div class="meta-chips">
+        <span>Sizes: {{ product.sizes }}</span>
+        <span>Stock: {{ product.stock }}</span>
+        <span>Fast delivery</span>
+      </div>
+      <div class="product-actions-inline">
+        <form method="post" action="/cart/add/{{ product.id }}"><button class="btn btn-outline" type="submit">Add to Cart</button></form>
+        <form method="post" action="/wishlist/add/{{ product.id }}"><button class="btn btn-outline" type="submit">Add to Wishlist</button></form>
+      </div>
+
+      <form method="post" action="/checkout" class="checkout-form">
+        <input type="hidden" name="product_id" value="{{ product.id }}" />
+        <div class="grid-two">
+          <input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}" required />
+          <select name="size" required>
+            {% for size in product.sizes.split(',') %}
+            <option value="{{ size.strip() }}">{{ size.strip() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <input type="text" name="customer_name" placeholder="Full Name" required />
+        <input type="text" name="phone" placeholder="Phone Number" required />
+        <textarea name="address" placeholder="Delivery Address" required></textarea>
+        <div class="grid-three">
+          <input type="text" name="city" placeholder="City" required />
+          <input type="text" name="state" placeholder="State" required />
+          <input type="text" name="pincode" placeholder="Pincode" required />
+        </div>
+        <div class="payment-box">
+          <label><input type="radio" name="payment_method" value="Online" checked /> Online Payment</label>
+          <label><input type="radio" name="payment_method" value="COD" /> Cash on Delivery</label>
+          <p class="muted">Demo payment gateway enabled. Online payment marks order as paid instantly.</p>
+        </div>
+        <button class="btn" type="submit">Place Order</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="container section">
+  <div class="section-head">
+    <h2>You may also like</h2>
+    <p>Smart product recommendations</p>
+  </div>
+  <div class="product-grid mini-grid">
+    {% for item in recommendations %}
+    <article class="product-card glow-card">
+      <img src="{{ item.image }}" alt="{{ item.name }}" />
+      <div class="product-info">
+        <span class="category">{{ item.category }}</span>
+        <h3>{{ item.name }}</h3>
+        <div class="product-meta"><strong>₹{{ '%.0f'|format(item.price) }}</strong><span>Stock: {{ item.stock }}</span></div>
+        <a class="btn" href="/product/{{ item.id }}">View Product</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{% if frequently_bought %}
+<section class="container section">
+  <div class="section-head">
+    <h2>Frequently Bought Together</h2>
+    <p>Customers who bought this also bought</p>
+  </div>
+  <div class="product-grid mini-grid">
+    {% for item in frequently_bought %}
+    <article class="product-card glow-card">
+      <img src="{{ item.image }}" alt="{{ item.name }}" />
+      <div class="product-info">
+        <span class="category">{{ item.category }}</span>
+        <h3>{{ item.name }}</h3>
+        <div class="product-meta"><strong>₹{{ '%.0f'|format(item.price) }}</strong><span>Stock: {{ item.stock }}</span></div>
+        <a class="btn" href="/product/{{ item.id }}">View Product</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if similar_products and similar_products != recommendations %}
+<section class="container section">
+  <div class="section-head">
+    <h2>Similar Products</h2>
+    <p>AI-powered similarity matching</p>
+  </div>
+  <div class="product-grid mini-grid">
+    {% for item in similar_products %}
+    <article class="product-card glow-card">
+      <img src="{{ item.image }}" alt="{{ item.name }}" />
+      <div class="product-info">
+        <span class="category">{{ item.category }}</span>
+        <h3>{{ item.name }}</h3>
+        <div class="product-meta"><strong>₹{{ '%.0f'|format(item.price) }}</strong><span>Stock: {{ item.stock }}</span></div>
+        <a class="btn" href="/product/{{ item.id }}">View Product</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

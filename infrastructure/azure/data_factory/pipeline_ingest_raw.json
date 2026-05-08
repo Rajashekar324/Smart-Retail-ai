@@ -1,0 +1,221 @@
+{
+  "name": "Ingest_Raw_Data_Pipeline",
+  "properties": {
+    "description": "Ingest raw data from SQLite source to Azure Data Lake Gen2 raw layer",
+    "activities": [
+      {
+        "name": "Lookup_Tables",
+        "description": "Get list of tables to ingest",
+        "type": "Lookup",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "source": {
+            "type": "SqliteSource",
+            "sqlReaderQuery": "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'alembic_%'"
+          },
+          "dataset": {
+            "referenceName": "SQLite_Source",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": false
+        }
+      },
+      {
+        "name": "ForEach_Table",
+        "description": "Iterate through each table and copy to ADLS",
+        "type": "ForEach",
+        "dependsOn": [
+          {
+            "activity": "Lookup_Tables",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "userProperties": [],
+        "typeProperties": {
+          "items": {
+            "value": "@activity('Lookup_Tables').output.value",
+            "type": "Expression"
+          },
+          "isSequential": false,
+          "activities": [
+            {
+              "name": "Copy_Table_To_Raw",
+              "description": "Copy table data to raw zone as Parquet",
+              "type": "Copy",
+              "dependsOn": [],
+              "policy": {
+                "timeout": "1.00:00:00",
+                "retry": 2,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "userProperties": [],
+              "typeProperties": {
+                "source": {
+                  "type": "SqliteSource",
+                  "sqlReaderQuery": {
+                    "value": "@concat('SELECT * FROM ', item().name)",
+                    "type": "Expression"
+                  }
+                },
+                "sink": {
+                  "type": "ParquetSink",
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings",
+                    "copyBehavior": "PreserveHierarchy"
+                  },
+                  "formatSettings": {
+                    "type": "ParquetWriteSettings",
+                    "maxRowsPerFile": 1000000
+                  }
+                },
+                "enableStaging": false,
+                "parallelCopies": 4,
+                "dataIntegrationUnits": 4,
+                "validateDataConsistency": true
+              },
+              "inputs": [
+                {
+                  "referenceName": "SQLite_Source",
+                  "type": "DatasetReference"
+                }
+              ],
+              "outputs": [
+                {
+                  "referenceName": "ADLS_Raw_Parquet",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "tableName": {
+                      "value": "@item().name",
+                      "type": "Expression"
+                    },
+                    "loadDate": {
+                      "value": "@formatDateTime(utcNow(), 'yyyy/MM/dd')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "Ingest_API_Metrics",
+        "description": "Ingest real-time metrics from application API",
+        "type": "Copy",
+        "dependsOn": [
+          {
+            "activity": "ForEach_Table",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "0.30:00:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "source": {
+            "type": "RestSource",
+            "httpRequestTimeout": "00:01:40",
+            "requestInterval": "00.00:00:00.010",
+            "requestMethod": "GET",
+            "additionalHeaders": {
+              "Authorization": "Bearer <api-token>"
+            }
+          },
+          "sink": {
+            "type": "JsonSink",
+            "storeSettings": {
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "formatSettings": {
+              "type": "JsonWriteSettings",
+              "filePattern": "arrayOfObjects"
+            }
+          }
+        },
+        "inputs": [
+          {
+            "referenceName": "API_Metrics_Source",
+            "type": "DatasetReference"
+          }
+        ],
+        "outputs": [
+          {
+            "referenceName": "ADLS_Raw_Metrics",
+            "type": "DatasetReference",
+            "parameters": {
+              "metricType": "daily_metrics",
+              "loadDate": {
+                "value": "@formatDateTime(utcNow(), 'yyyy/MM/dd/HH/mm')",
+                "type": "Expression"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Log_Ingestion_Metadata",
+        "description": "Log pipeline execution metadata",
+        "type": "SqlServerStoredProcedure",
+        "dependsOn": [
+          {
+            "activity": "Ingest_API_Metrics",
+            "dependencyConditions": ["Succeeded"]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "storedProcedureName": "[dbo].[LogPipelineExecution]",
+          "storedProcedureParameters": {
+            "PipelineName": {
+              "value": "Ingest_Raw_Data_Pipeline",
+              "type": "String"
+            },
+            "RunId": {
+              "value": "@pipeline().RunId",
+              "type": "String"
+            },
+            "Status": {
+              "value": "Completed",
+              "type": "String"
+            },
+            "RowsProcessed": {
+              "value": "@activity('ForEach_Table').output.rowsCopied",
+              "type": "Int32"
+            }
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureSQL_Metadata",
+          "type": "LinkedServiceReference"
+        }
+      }
+    ],
+    "folder": {
+      "name": "SmartRetail/Ingest"
+    },
+    "annotations": ["raw", "ingestion", "parquet"]
+  }
+}

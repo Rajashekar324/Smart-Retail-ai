@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1600px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">☁️ Azure Management Panel</h1>
+    
+    <!-- Overall Status -->
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px;">
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%); color: white; border-radius: 8px;">
+            <div id="totalServices" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Azure Services</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1dd1a1 0%, #10ac84 100%); color: white; border-radius: 8px;">
+            <div id="healthyServices" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Healthy</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); color: white; border-radius: 8px;">
+            <div id="monthlyCost" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Monthly Cost</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%); color: white; border-radius: 8px;">
+            <div id="storageUsed" style="font-size: 32px; font-weight: bold;">-</div>
+            <div style="margin-top: 5px;">Storage Used</div>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #5f27cd 0%, #341f97 100%); color: white; border-radius: 8px;">
+            <div id="uptime" style="font-size: 32px; font-weight: bold;">99.9%</div>
+            <div style="margin-top: 5px;">Uptime</div>
+        </div>
+    </div>
+    
+    <!-- Service Status Cards -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">🔧 Azure Service Status</h2>
+        <div id="serviceStatus" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
+            <p style="color: #666; grid-column: 1/-1;">Loading...</p>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <!-- Cost Breakdown -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">💰 Cost Breakdown</h2>
+            <div id="costBreakdown"></div>
+        </div>
+        
+        <!-- Storage Usage -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">📦 Storage Usage</h2>
+            <div id="storageUsage"></div>
+        </div>
+    </div>
+    
+    <!-- Model Endpoints -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 20px;">🧠 ML Model Endpoints</h2>
+        <div id="modelEndpoints">
+            <p style="color: #666;">Loading...</p>
+        </div>
+    </div>
+    
+    <!-- Deployment Logs -->
+    <div class="glass-card">
+        <h2 style="margin-bottom: 20px;">🚀 Deployment Logs</h2>
+        <div id="deploymentLogs" style="max-height: 400px; overflow-y: auto;">
+            <p style="color: #666;">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+async function loadAzureStatus() {
+    try {
+        const response = await fetch('/api/admin/azure/status');
+        const data = await response.json();
+        
+        document.getElementById('totalServices').textContent = data.total_services || 0;
+        document.getElementById('healthyServices').textContent = data.healthy_count || 0;
+        
+        const container = document.getElementById('serviceStatus');
+        if (data.services) {
+            container.innerHTML = Object.values(data.services).map(s => `
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; text-align: center;
+                    ${s.status === 'healthy' ? 'border-top: 4px solid #1dd1a1;' : 'border-top: 4px solid #ff6b6b;'}">
+                    <div style="font-size: 32px; margin-bottom: 10px;">${s.icon}</div>
+                    <div style="font-weight: bold; margin-bottom: 5px;">${s.name}</div>
+                    <div style="color: ${s.status === 'healthy' ? '#1dd1a1' : '#ff6b6b'}; font-size: 14px; text-transform: uppercase;">${s.status}</div>
+                    <div style="color: #666; font-size: 12px; margin-top: 8px;">${s.region}</div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading Azure status:', error);
+    }
+}
+
+async function loadCosts() {
+    try {
+        const response = await fetch('/api/admin/azure/costs');
+        const data = await response.json();
+        
+        document.getElementById('monthlyCost').textContent = '$' + (data.current_month_usd || 0);
+        
+        const container = document.getElementById('costBreakdown');
+        if (data.breakdown) {
+            container.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; color: #666;">
+                        <span>Previous Month</span>
+                        <span>$${data.previous_month_usd || 0}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 5px;">
+                        <span>Current Month</span>
+                        <span style="color: #0078d4;">$${data.current_month_usd || 0}</span>
+                    </div>
+                    <div style="color: ${data.trend.includes('+') ? '#ff6b6b' : '#1dd1a1'}; font-size: 14px; margin-top: 5px;">
+                        Trend: ${data.trend}
+                    </div>
+                </div>
+                <canvas id="costChart" height="200"></canvas>
+            `;
+            
+            // Create cost chart
+            setTimeout(() => {
+                const ctx = document.getElementById('costChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.breakdown.map(b => b.service),
+                            datasets: [{
+                                data: data.breakdown.map(b => b.percentage),
+                                backgroundColor: ['#0078d4', '#00bcf2', '#107c10', '#ffb900', '#d83b01']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+            }, 100);
+        }
+    } catch (error) {
+        console.error('Error loading costs:', error);
+    }
+}
+
+async function loadStorage() {
+    try {
+        const response = await fetch('/api/admin/azure/storage');
+        const data = await response.json();
+        
+        document.getElementById('storageUsed').textContent = (data.total_storage_gb || 0) + 'GB';
+        
+        const container = document.getElementById('storageUsage');
+        if (data.breakdown) {
+            container.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; color: #666;">
+                        <span>Tier: ${data.tier}</span>
+                        <span>Replication: ${data.replication}</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px; color: #666;">
+                        Last Backup: ${new Date(data.last_backup).toLocaleString()}
+                    </div>
+                </div>
+                <div style="display: grid; gap: 8px;">
+                    ${data.breakdown.map(b => `
+                        <div style="display: flex; justify-content: space-between; padding: 10px; background: #f5f5f5; border-radius: 6px;">
+                            <span>${b.type}</span>
+                            <span style="font-weight: bold;">${b.size_gb}GB (${b.files} files)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading storage:', error);
+    }
+}
+
+async function loadModelEndpoints() {
+    try {
+        const response = await fetch('/api/admin/azure/model-endpoints');
+        const data = await response.json();
+        
+        const container = document.getElementById('modelEndpoints');
+        if (data.endpoints) {
+            container.innerHTML = `<table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 12px; text-align: left;">Endpoint</th>
+                        <th style="padding: 12px; text-align: center;">Version</th>
+                        <th style="padding: 12px; text-align: center;">Status</th>
+                        <th style="padding: 12px; text-align: center;">Latency</th>
+                        <th style="padding: 12px; text-align: center;">Calls/Min</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.endpoints.map(e => `
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 12px;">
+                                <strong>${e.name}</strong>
+                                <div style="color: #666; font-size: 12px;">${e.url}</div>
+                            </td>
+                            <td style="padding: 12px; text-align: center;">${e.version}</td>
+                            <td style="padding: 12px; text-align: center;">
+                                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; 
+                                    ${e.status === 'healthy' ? 'background: #efe; color: #3c3;' : 'background: #fee; color: #c33;'}">${e.status}</span>
+                            </td>
+                            <td style="padding: 12px; text-align: center;">${e.latency_ms}ms</td>
+                            <td style="padding: 12px; text-align: center; font-weight: bold;">${e.calls_per_min}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+        }
+    } catch (error) {
+        console.error('Error loading model endpoints:', error);
+    }
+}
+
+async function loadDeploymentLogs() {
+    try {
+        const response = await fetch('/api/admin/azure/deployment-logs');
+        const data = await response.json();
+        
+        const container = document.getElementById('deploymentLogs');
+        if (data.logs) {
+            container.innerHTML = data.logs.map(log => `
+                <div style="padding: 12px; border-bottom: 1px solid #eee;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong>${log.service}</strong>
+                        <span style="color: #999; font-size: 12px;">${new Date(log.timestamp).toLocaleString()}</span>
+                    </div>
+                    <div style="color: #666; font-size: 14px;">${log.action} - ${log.message}</div>
+                    <div style="margin-top: 4px;">
+                        <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; 
+                            ${log.status === 'success' ? 'background: #efe; color: #3c3;' : log.status === 'warning' ? 'background: #ffd; color: #960;' : 'background: #fee; color: #c33;'}">${log.status}</span>
+                        <span style="color: #999; font-size: 11px; margin-left: 8px;">v${log.version}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading deployment logs:', error);
+    }
+}
+
+// Load all data
+loadAzureStatus();
+loadCosts();
+loadStorage();
+loadModelEndpoints();
+loadDeploymentLogs();
+
+// Refresh every minute
+setInterval(() => {
+    loadAzureStatus();
+    loadCosts();
+    loadStorage();
+    loadModelEndpoints();
+    loadDeploymentLogs();
+}, 60000);
+</script>
+{% endblock %}

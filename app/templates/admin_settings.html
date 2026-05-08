@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+
+/* =========================
+   ADMIN SETTINGS CLEAN UI
+========================= */
+
+html,
+body{
+    overflow-x:hidden;
+}
+
+/* MAIN PAGE */
+
+.container.section{
+    max-width:1450px;
+    margin:auto;
+    padding:32px 40px;
+    display:flex;
+    flex-direction:column;
+    gap:30px;
+    box-sizing:border-box;
+}
+
+/* HEADER */
+
+.section-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+}
+
+.section-head h2{
+    font-size:2rem;
+    margin-bottom:6px;
+}
+
+.section-head p{
+    color:#6b7280;
+}
+
+/* GRID LAYOUT */
+
+.admin-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(420px,1fr));
+    gap:30px;
+    width:100%;
+    align-items:start;
+}
+
+/* CARDS */
+
+.detail-card{
+    background:#ffffff;
+    border-radius:22px;
+    padding:30px;
+    box-sizing:border-box;
+    width:100%;
+    box-shadow:0 4px 18px rgba(0,0,0,0.04);
+    border:1px solid #e5e7eb;
+}
+
+.detail-card h3{
+    margin-bottom:24px;
+    font-size:1.2rem;
+}
+
+/* FORMS */
+
+form{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:20px !important;
+}
+
+label{
+    display:block;
+    margin-bottom:8px !important;
+    font-weight:600;
+    color:#374151;
+}
+
+/* INPUTS */
+
+input[type="text"],
+input[type="email"],
+select{
+    width:100% !important;
+    padding:14px !important;
+    border:1px solid #d1d5db !important;
+    border-radius:10px !important;
+    font-size:0.95rem;
+    box-sizing:border-box;
+}
+
+/* CHECKBOX ROWS */
+
+div[style*="align-items: center"]{
+    display:flex !important;
+    align-items:center !important;
+    gap:14px !important;
+    padding:12px 0;
+}
+
+/* CHECKBOX */
+
+input[type="checkbox"]{
+    width:18px !important;
+    height:18px !important;
+}
+
+/* BUTTONS */
+
+.btn{
+    padding:12px 22px !important;
+    border-radius:10px !important;
+    font-weight:600;
+    align-self:flex-start;
+}
+
+/* SYSTEM INFO */
+
+div[style*="justify-content: space-between"]{
+    display:flex !important;
+    justify-content:space-between !important;
+    align-items:center !important;
+    padding:14px 16px !important;
+    border-radius:12px !important;
+    margin-bottom:12px;
+}
+
+/* SAVE STATUS */
+
+#saveStatus{
+    font-weight:600;
+    padding:12px 18px !important;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:900px){
+
+    .admin-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:768px){
+
+    .container.section{
+        padding:18px;
+    }
+
+    .section-head{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .detail-card{
+        padding:22px;
+    }
+}
+
+</style>
+
+
+<section class="container section">
+    <div class="section-head">
+        <div>
+            <h2>Admin Settings</h2>
+            <p>Configure system settings and preferences.</p>
+        </div>
+        <div id="saveStatus" style="padding: 10px 20px; border-radius: 6px; display: none;"></div>
+    </div>
+
+    <div class="admin-grid">
+        <div class="detail-card">
+            <h3>General Settings</h3>
+            <form id="generalSettingsForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Store Name</label>
+                    <input type="text" id="storeName" name="store_name" value="{{ settings.store_name.setting_value }}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Support Email</label>
+                    <input type="email" id="supportEmail" name="support_email" value="{{ settings.support_email.setting_value }}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Timezone</label>
+                    <select id="timezone" name="timezone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="UTC" {% if settings.timezone.setting_value == 'UTC' %}selected{% endif %}>UTC</option>
+                        <option value="Asia/Kolkata" {% if settings.timezone.setting_value == 'Asia/Kolkata' %}selected{% endif %}>Asia/Kolkata</option>
+                        <option value="America/New_York" {% if settings.timezone.setting_value == 'America/New_York' %}selected{% endif %}>America/New_York</option>
+                        <option value="Europe/London" {% if settings.timezone.setting_value == 'Europe/London' %}selected{% endif %}>Europe/London</option>
+                    </select>
+                </div>
+                <button type="button" onclick="saveSettings()" class="btn" style="align-self: flex-start;">Save Settings</button>
+            </form>
+        </div>
+
+        <div class="detail-card">
+            <h3>Notification Preferences</h3>
+            <form id="notificationForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="emailNotif" name="email_notifications" {% if settings.email_notifications.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="emailNotif">Email Notifications</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="orderAlerts" name="order_alerts" {% if settings.order_alerts.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="orderAlerts">New Order Alerts</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="ticketAlerts" name="ticket_alerts" {% if settings.ticket_alerts.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="ticketAlerts">Support Ticket Alerts</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="lowStock" name="low_stock_alerts" {% if settings.low_stock_alerts.setting_value == 'true' %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <label for="lowStock">Low Stock Warnings</label>
+                </div>
+                <button type="button" onclick="saveSettings()" class="btn" style="align-self: flex-start;">Save Preferences</button>
+            </form>
+        </div>
+
+        <div class="detail-card">
+            <h3>System Information</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; padding: 10px; background: #f8fafc; border-radius: 6px;">
+                    <span>Version</span>
+                    <span style="font-weight: 600;">1.0.0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 10px; background: #f8fafc; border-radius: 6px;">
+                    <span>Timezone</span>
+                    <span style="font-weight: 600;">{{ settings.timezone.setting_value }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 10px; background: #f8fafc; border-radius: 6px;">
+                    <span>Database Status</span>
+                    <span style="color: #059669; font-weight: 600;">Connected</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 10px; background: #f8fafc; border-radius: 6px;">
+                    <span>AI Services</span>
+                    <span style="color: #059669; font-weight: 600;">Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+async function saveSettings() {
+    const statusDiv = document.getElementById('saveStatus');
+    statusDiv.style.display = 'none';
+    
+    const settings = {
+        store_name: document.getElementById('storeName').value,
+        support_email: document.getElementById('supportEmail').value,
+        timezone: document.getElementById('timezone').value,
+        email_notifications: document.getElementById('emailNotif').checked.toString(),
+        order_alerts: document.getElementById('orderAlerts').checked.toString(),
+        ticket_alerts: document.getElementById('ticketAlerts').checked.toString(),
+        low_stock_alerts: document.getElementById('lowStock').checked.toString()
+    };
+    
+    try {
+        const response = await fetch('/api/admin/settings/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusDiv.textContent = 'Settings saved successfully!';
+            statusDiv.style.background = '#d1fae5';
+            statusDiv.style.color = '#065f46';
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        } else {
+            statusDiv.textContent = 'Error: ' + (data.error || 'Failed to save');
+            statusDiv.style.background = '#fee2e2';
+            statusDiv.style.color = '#991b1b';
+            statusDiv.style.display = 'block';
+        }
+    } catch (error) {
+        statusDiv.textContent = 'Error: ' + error.message;
+        statusDiv.style.background = '#fee2e2';
+        statusDiv.style.color = '#991b1b';
+        statusDiv.style.display = 'block';
+    }
+}
+</script>
+{% endblock %}

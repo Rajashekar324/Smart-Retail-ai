@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin-top: 50px;">
+    <h1 style="margin-bottom: 30px;">My Profile</h1>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
+        <!-- Profile Information -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">Profile Information</h2>
+            
+            <form method="post" action="/profile/update">
+                <div style="margin-bottom: 15px;">
+                    <label for="name" style="display: block; margin-bottom: 5px; font-weight: 500;">Name</label>
+                    <input type="text" id="name" name="name" value="{{ user.name }}" required
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label for="email" style="display: block; margin-bottom: 5px; font-weight: 500;">Email</label>
+                    <input type="email" id="email" value="{{ user.email }}" disabled
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f5f5f5;">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="phone" style="display: block; margin-bottom: 5px; font-weight: 500;">Phone</label>
+                    <input type="tel" id="phone" name="phone" value="{{ user.phone }}"
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                
+                <button type="submit" class="btn">Update Profile</button>
+            </form>
+        </div>
+        
+        <!-- Change Password -->
+        <div class="glass-card">
+            <h2 style="margin-bottom: 20px;">Change Password</h2>
+            
+            <form method="post" action="/profile/change-password">
+                <div style="margin-bottom: 15px;">
+                    <label for="current_password" style="display: block; margin-bottom: 5px; font-weight: 500;">Current Password</label>
+                    <input type="password" id="current_password" name="current_password" required
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label for="new_password" style="display: block; margin-bottom: 5px; font-weight: 500;">New Password</label>
+                    <input type="password" id="new_password" name="new_password" required minlength="6"
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="confirm_password" style="display: block; margin-bottom: 5px; font-weight: 500;">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required minlength="6"
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                
+                <button type="submit" class="btn btn-outline">Change Password</button>
+            </form>
+            
+            {% if error %}
+            <div style="margin-top: 15px; color: #c33; padding: 10px; background: #fee; border-radius: 6px;">
+                {{ error }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Analytics -->
+    <div class="glass-card" style="margin-bottom: 40px;">
+        <h2 style="margin-bottom: 20px;">Profile Analytics</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+                <div style="font-size: 36px; font-weight: bold;">{{ analytics.total_logins }}</div>
+                <div style="margin-top: 5px;">Total Logins</div>
+            </div>
+            <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 8px;">
+                <div style="font-size: 36px; font-weight: bold;">{{ analytics.active_sessions }}</div>
+                <div style="margin-top: 5px;">Active Sessions</div>
+            </div>
+            <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 8px;">
+                <div style="font-size: 36px; font-weight: bold;">{{ analytics.total_activities }}</div>
+                <div style="margin-top: 5px;">Total Activities</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Active Sessions -->
+    <div class="glass-card" style="margin-bottom: 40px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Active Sessions</h2>
+            <form method="post" action="/profile/sessions/revoke-all" style="margin: 0;">
+                <button type="submit" class="btn btn-outline" style="padding: 8px 16px; font-size: 14px;">Revoke All Other Sessions</button>
+            </form>
+        </div>
+        
+        {% if sessions %}
+        <div style="display: grid; gap: 15px;">
+            {% for session in sessions %}
+            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 500; margin-bottom: 5px;">{{ session.browser }} on {{ session.device_type }}</div>
+                    <div style="color: #666; font-size: 14px;">
+                        IP: {{ session.ip_address }} | Last Active: {{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}
+                    </div>
+                </div>
+                <form method="post" action="/profile/sessions/revoke/{{ session.session_id }}" style="margin: 0;">
+                    <button type="submit" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;">Revoke</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #666;">No active sessions found.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Recent Activities -->
+    <div class="glass-card">
+        <h2 style="margin-bottom: 20px;">Recent Activities</h2>
+        
+        {% if analytics.recent_activities %}
+        <div style="display: grid; gap: 10px;">
+            {% for activity in analytics.recent_activities %}
+            <div style="padding: 12px; border-left: 3px solid #667eea; background: #f8f9ff; border-radius: 0 6px 6px 0;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="font-weight: 500;">{{ activity.activity_type|title }}</span>
+                    <span style="color: #666; font-size: 14px;">{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                {% if activity.activity_details %}
+                <div style="color: #666; font-size: 14px; margin-top: 5px;">{{ activity.activity_details }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #666;">No recent activities found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
