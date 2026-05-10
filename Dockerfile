@@ -2,12 +2,16 @@ FROM python:3.11
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for Prophet, TensorFlow, and ML models
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
     libpq-dev \
+    build-essential \
+    libgomp1 \
+    libffi-dev \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
