@@ -1,19 +1,21 @@
 {% extends "base.html" %}
 
+{% block chatbot %}{% endblock %}
+
 {% block content %}
-<div class="container" style="max-width: 1600px; margin-top: 50px;">
+<div style="width: 100%; padding: 0 30px; margin-top: 50px; box-sizing: border-box;">
     <h1 style="margin-bottom: 30px;">📈 Demand Forecasting Dashboard</h1>
     
     <!-- CSV Upload Section -->
     <div class="glass-card" style="margin-bottom: 20px;">
         <h2 style="margin-bottom: 15px;">📤 Upload Custom Dataset</h2>
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: end;">
+        <div style="display: flex; flex-direction: column; gap: 15px;">
             <div>
                 <label style="display: block; margin-bottom: 8px; font-weight: 500;">CSV File (date, revenue, orders)</label>
                 <input type="file" id="csvFile" accept=".csv" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                 <p style="color: #666; font-size: 12px; margin-top: 5px;">Required columns: date (YYYY-MM-DD), revenue (number), orders (number, optional)</p>
             </div>
-            <button onclick="uploadCSV()" class="btn" style="padding: 10px 20px;">Upload CSV</button>
+            <button onclick="uploadCSV()" class="btn" style="padding: 10px 20px; align-self: flex-start;">Upload CSV</button>
         </div>
         <div id="uploadStatus" style="margin-top: 10px;"></div>
         <div id="dataInfo" style="margin-top: 10px; display: none;">
@@ -31,10 +33,10 @@
                 <div>
                     <label style="display: block; margin-bottom: 8px; font-weight: 500;">Model Type</label>
                     <select id="modelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                        <option value="all">All Models</option>
+                        <option value="all">All Models (Prophet + ARIMA + Exp. Smoothing)</option>
                         <option value="prophet">Prophet</option>
                         <option value="arima">ARIMA</option>
-                        <option value="lstm">LSTM</option>
+                        <option value="lstm">Exp. Smoothing</option>
                     </select>
                 </div>
                 <div>
@@ -72,12 +74,11 @@
         </div>
         
         <!-- Forecast Table -->
-        <div class="glass-card">
+        <div class="glass-card" style="font-size: 20px;">
             <h2 style="margin-bottom: 20px;">📋 Forecast Data</h2>
             <div id="forecastTable"></div>
         </div>
     </div>
-    
     <!-- Loading State -->
     <div id="loadingState" style="display: none; text-align: center; padding: 40px;">
         <p style="font-size: 18px;">Training models... This may take a few moments.</p>
@@ -189,8 +190,23 @@ async function trainModels() {
         const response = await fetch(`/api/admin/forecast/train?model_type=${modelType}&periods=${periods}`);
         const data = await response.json();
         
-        if (data.error) {
+        if (data.error && !data.data_sufficient) {
             alert('Error: ' + data.error);
+            document.getElementById('loadingState').style.display = 'none';
+            return;
+        }
+        
+        // Show warning but continue if data is sufficient
+        if (data.warning && data.data_sufficient) {
+            console.warn('Warning:', data.warning);
+        } else if (data.warning) {
+            alert('Warning: ' + data.warning);
+            document.getElementById('loadingState').style.display = 'none';
+            return;
+        }
+        
+        if (!data.forecasts || data.forecasts.length === 0) {
+            alert('No forecasts generated. Check if you have enough historical order data (at least 7 days of orders).');
             document.getElementById('loadingState').style.display = 'none';
             return;
         }
@@ -205,9 +221,16 @@ async function trainModels() {
 }
 
 function displayForecasts(data) {
+    console.log('displayForecasts called with:', data);
+    
+    // Clear previous warnings
+    const existingWarnings = document.querySelectorAll('[id="tempWarning"]');
+    existingWarnings.forEach(el => el.remove());
+    
     // Show warning if present
     if (data.warning) {
         const warningDiv = document.createElement('div');
+        warningDiv.id = 'tempWarning';
         warningDiv.style.padding = '15px';
         warningDiv.style.background = '#fff3cd';
         warningDiv.style.border = '1px solid #ffc107';
@@ -222,22 +245,57 @@ function displayForecasts(data) {
     
     // Display model comparison
     const comparisonDiv = document.getElementById('modelComparison');
-    if (data.comparison && data.comparison.comparison) {
-        comparisonDiv.innerHTML = data.comparison.comparison.map(comp => `
-            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px;">
+    if (data.comparison && data.comparison.comparison && data.comparison.comparison.length > 0) {
+        comparisonDiv.innerHTML = data.comparison.comparison.map(comp => {
+            const metrics = comp.metrics || {};
+            const r2 = metrics.r2 !== undefined ? metrics.r2.toFixed(3) : 'N/A';
+            const mae = metrics.mae !== undefined ? `₹${metrics.mae.toFixed(0)}` : 'N/A';
+            
+            return `
+            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; ${comp.model === data.comparison.best_model ? 'border-left: 4px solid #667eea; background: #f8f9ff;' : ''}">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <strong>${comp.model}</strong>
-                    <span style="color: #667eea;">${comp.accuracy}</span>
+                    <strong>${comp.model} ${comp.model === data.comparison.best_model ? '🏆' : ''}</strong>
+                    <span style="color: ${comp.data_sufficient ? '#3c3' : '#c33'};">${comp.data_sufficient ? '✓ Working' : '✗ Failed'}</span>
                 </div>
-                <div style="color: #666;">Avg Forecast: ₹${comp.avg_forecast.toFixed(0)}</div>
-                <div style="color: #666;">Variance: ${comp.variance.toFixed(0)}</div>
+                <div style="color: #666; font-size: 13px;">Avg Forecast: ₹${comp.avg_forecast ? comp.avg_forecast.toFixed(0) : 'N/A'}</div>
+                <div style="color: #666; font-size: 13px;">R² Score: ${r2}</div>
+                <div style="color: #666; font-size: 13px;">MAE: ${mae}</div>
             </div>
-        `).join('');
+        `}).join('');
+        
+        if (data.comparison.best_model) {
+            comparisonDiv.innerHTML += `<p style="color: #667eea; font-size: 12px; margin-top: 10px;">🏆 Best Model: ${data.comparison.best_model} (${data.comparison.best_model_reason})</p>`;
+        }
+    } else {
+        comparisonDiv.innerHTML = '<p style="color: #666;">No model comparison data available.</p>';
     }
     
     // Display seasonal insights
     const seasonalDiv = document.getElementById('seasonalInsights');
-    if (data.seasonal_insights && data.seasonal_insights.seasonal_insights) {
+    if (data.trend_info) {
+        const trendColor = data.trend_info.trend === 'upward' ? '#3c3' : data.trend_info.trend === 'downward' ? '#c33' : '#666';
+        const trendIcon = data.trend_info.trend === 'upward' ? '📈' : data.trend_info.trend === 'downward' ? '📉' : '➡️';
+        
+        seasonalDiv.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                <div style="padding: 15px; background: #f8f9ff; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; margin-bottom: 5px;">${trendIcon}</div>
+                    <div style="color: #666; font-size: 12px;">Trend</div>
+                    <div style="color: ${trendColor}; font-weight: 600;">${data.trend_info.trend || 'stable'}</div>
+                </div>
+                <div style="padding: 15px; background: #f8f9ff; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; margin-bottom: 5px;">📊</div>
+                    <div style="color: #666; font-size: 12px;">Avg Daily Revenue</div>
+                    <div style="color: #667eea; font-weight: 600;">₹${(data.trend_info.avg_daily || 0).toFixed(0)}</div>
+                </div>
+                <div style="padding: 15px; background: #f8f9ff; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; margin-bottom: 5px;">📈</div>
+                    <div style="color: #666; font-size: 12px;">Growth Rate</div>
+                    <div style="color: ${data.trend_info.growth_rate > 0 ? '#3c3' : data.trend_info.growth_rate < 0 ? '#c33' : '#666'}; font-weight: 600;">${(data.trend_info.growth_rate || 0).toFixed(1)}%</div>
+                </div>
+            </div>
+        `;
+    } else if (data.seasonal_insights && data.seasonal_insights.seasonal_insights && data.seasonal_insights.seasonal_insights.length > 0) {
         seasonalDiv.innerHTML = data.seasonal_insights.seasonal_insights.map(insight => `
             <div style="padding: 12px; border-radius: 6px; margin-bottom: 10px; 
                 ${insight.type === 'peak' ? 'background: #efe; border-left: 4px solid #3c3;' : 'background: #ffd; border-left: 4px solid #fc3;'}">
@@ -245,157 +303,242 @@ function displayForecasts(data) {
             </div>
         `).join('');
     } else {
-        seasonalDiv.innerHTML = '<p style="color: #666;">No seasonal data available yet.</p>';
+        seasonalDiv.innerHTML = '<p style="color: #666;">No trend data available yet.</p>';
     }
     
-    // Display forecast table
+    // Display forecast table with all models
     const tableDiv = document.getElementById('forecastTable');
     if (data.forecasts && data.forecasts.length > 0) {
-        const bestForecast = data.forecasts[0];
-        tableDiv.innerHTML = `
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #f5f5f5;">
-                        <th style="padding: 10px; text-align: left;">Date</th>
-                        <th style="padding: 10px; text-align: right;">Forecast</th>
-                        <th style="padding: 10px; text-align: right;">Lower Bound</th>
-                        <th style="padding: 10px; text-align: right;">Upper Bound</th>
+        const successfulForecasts = data.forecasts.filter(f => f.data_sufficient && f.forecast && f.forecast.length > 0);
+        
+        if (successfulForecasts.length > 0) {
+            // Get all dates from the first forecast
+            const dates = successfulForecasts[0].forecast.map(f => f.ds);
+            
+            // Build table rows
+            let rows = '';
+            for (let i = 0; i < dates.length; i++) {
+                const date = dates[i];
+                const cells = successfulForecasts.map(f => {
+                    const forecast = f.forecast[i];
+                    return `<td style="padding: 8px; text-align: right;">₹${forecast.yhat.toFixed(0)}</td>`;
+                }).join('');
+                
+                rows += `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 8px; font-weight: 500;">${date}</td>
+                        ${cells}
                     </tr>
-                </thead>
-                <tbody>
-                    ${bestForecast.forecast.map(f => `
-                        <tr style="border-bottom: 1px solid #ddd;">
-                            <td style="padding: 10px;">${new Date(f.ds).toLocaleDateString('en-IN')}</td>
-                            <td style="padding: 10px; text-align: right;">₹${f.yhat.toFixed(0)}</td>
-                            <td style="padding: 10px; text-align: right; color: #666;">₹${f.yhat_lower.toFixed(0)}</td>
-                            <td style="padding: 10px; text-align: right; color: #666;">₹${f.yhat_upper.toFixed(0)}</td>
+                `;
+            }
+            
+            // Build header
+            const headerCells = successfulForecasts.map(f => 
+                `<th style="padding: 10px; text-align: right;">${f.model}</th>`
+            ).join('');
+            
+            tableDiv.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                            <th style="padding: 10px; text-align: left;">Date</th>
+                            ${headerCells}
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            tableDiv.innerHTML = '<p style="color: #666;">No forecast data available - models could not be trained with current data.</p>';
+        }
+    } else {
+        tableDiv.innerHTML = '<p style="color: #666;">No forecast data available.</p>';
     }
     
-    // Display forecast chart
+    // Display forecast chart with all models and historical data
     if (data.forecasts && data.forecasts.length > 0) {
-        const bestForecast = data.forecasts[0];
+        const successfulForecasts = data.forecasts.filter(f => f.data_sufficient && f.forecast && f.forecast.length > 0);
         
-        // Debug logging
-        console.log('Chart data:', bestForecast);
-        console.log('Forecast entries:', bestForecast.forecast.length);
-        
-        if (!bestForecast.forecast || bestForecast.forecast.length === 0) {
-            console.error('No forecast data available');
-            return;
-        }
-        
-        // Parse dates and values
-        const labels = bestForecast.forecast.map(f => {
-            const date = new Date(f.ds);
-            return isNaN(date.getTime()) ? f.ds : date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-        });
-        
-        const forecastData = bestForecast.forecast.map(f => parseFloat(f.yhat) || 0);
-        const lowerBound = bestForecast.forecast.map(f => parseFloat(f.yhat_lower) || 0);
-        const upperBound = bestForecast.forecast.map(f => parseFloat(f.yhat_upper) || 0);
-        
-        console.log('Labels:', labels);
-        console.log('Forecast values:', forecastData);
-        
-        // Destroy existing chart
-        if (forecastChart) {
-            forecastChart.destroy();
-            forecastChart = null;
-        }
-        
-        // Get canvas context
-        const canvas = document.getElementById('forecastChart');
-        if (!canvas) {
-            console.error('Canvas element not found');
-            return;
-        }
-        
-        const ctx = canvas.getContext('2d');
-        
-        // Create new chart
-        forecastChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Forecast',
-                    data: forecastData,
-                    borderColor: 'rgba(102, 126, 234, 1)',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        if (successfulForecasts.length > 0) {
+            // Get historical data
+            const historicalData = data.historical_data || [];
+            
+            // Combine historical and forecast dates for x-axis
+            const histDates = historicalData.map(d => d.date);
+            const forecastDates = successfulForecasts[0].forecast.map(f => f.ds);
+            const allDates = [...histDates, ...forecastDates];
+            
+            // Prepare datasets
+            const datasets = [];
+            const colors = [
+                { border: 'rgba(102, 126, 234, 1)', bg: 'rgba(102, 126, 234, 0.1)' },    // Prophet - Blue
+                { border: 'rgba(245, 158, 11, 1)', bg: 'rgba(245, 158, 11, 0.1)' },    // ARIMA - Orange
+                { border: 'rgba(16, 185, 129, 1)', bg: 'rgba(16, 185, 129, 0.1)' }     // Exp Smoothing - Green
+            ];
+            
+            // Add historical data as first dataset
+            const histValues = historicalData.map(d => d.revenue);
+            const emptyForecastPad = new Array(forecastDates.length).fill(null);
+            
+            datasets.push({
+                label: 'Historical Revenue',
+                data: [...histValues, ...emptyForecastPad],
+                borderColor: 'rgba(107, 114, 128, 1)',
+                backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            });
+            
+            // Add each model's forecast
+            successfulForecasts.forEach((forecast, idx) => {
+                const color = colors[idx % colors.length];
+                const emptyHistPad = new Array(histDates.length).fill(null);
+                const forecastValues = forecast.forecast.map(f => f.yhat);
+                
+                datasets.push({
+                    label: forecast.model + ' Forecast',
+                    data: [...emptyHistPad, ...forecastValues],
+                    borderColor: color.border,
+                    backgroundColor: color.bg,
                     borderWidth: 2,
-                    fill: true,
+                    borderDash: [5, 5],
+                    fill: false,
                     tension: 0.4,
                     pointRadius: 3,
                     pointHoverRadius: 5
-                }, {
-                    label: 'Upper Bound',
-                    data: upperBound,
-                    borderColor: 'rgba(240, 147, 251, 0.5)',
-                    borderWidth: 1,
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 0,
-                    pointHoverRadius: 0
-                }, {
-                    label: 'Lower Bound',
-                    data: lowerBound,
-                    borderColor: 'rgba(240, 147, 251, 0.5)',
-                    borderWidth: 1,
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 0,
-                    pointHoverRadius: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
+                });
+            });
+            
+            // Destroy existing chart
+            if (forecastChart) {
+                forecastChart.destroy();
+                forecastChart = null;
+            }
+            
+            // Get canvas context
+            const canvas = document.getElementById('forecastChart');
+            if (!canvas) {
+                console.error('Canvas element not found');
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Create new chart
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allDates,
+                    datasets: datasets
                 },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ₹' + context.parsed.y.toFixed(0);
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Historical Revenue vs Model Forecasts',
+                            font: { size: 16, weight: 'bold' }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.parsed.y === null) return null;
+                                    return context.dataset.label + ': ₹' + context.parsed.y.toFixed(0);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Revenue (₹)'
                             }
                         }
                     }
-                },
-                scales: {
-                    x: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Date'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Revenue (₹)'
-                        }
-                    }
                 }
+            });
+            
+            console.log('Chart created successfully with', datasets.length, 'datasets');
+        } else {
+            console.error('No successful forecasts found');
+            const canvas = document.getElementById('forecastChart');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#666';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No forecast data available - models could not be trained', canvas.width / 2, canvas.height / 2);
             }
-        });
-        
-        console.log('Chart created successfully');
+        }
     } else {
         console.error('No forecasts available');
     }
 }
 </script>
 {% endblock %}
+<style>
+table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+table thead tr {
+    background: linear-gradient(90deg, #5b6ee1, #7b4bb7);
+    color: white;
+}
+
+table th {
+    padding: 14px;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+table td {
+    padding: 12px;
+    border-bottom: 1px solid #dcdcdc;
+    font-size: 14px;
+}
+
+table tr:nth-child(even) {
+    background-color: #f7f7f7;
+}
+
+table tr:hover {
+    background-color: #ece8ff;
+    transition: 0.2s;
+}
+
+/* Left align date column */
+table td:first-child,
+table th:first-child {
+    text-align: left;
+    padding-left: 20px;
+}
+</style>

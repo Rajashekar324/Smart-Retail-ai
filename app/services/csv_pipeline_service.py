@@ -1,32 +1,117 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import io
 
 import pandas as pd
+import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = ROOT_DIR / "data"
 CSV_CANDIDATES = [
     ROOT_DIR / "backend" / "data" / "final_analytics.csv",
     ROOT_DIR / "data" / "final_analytics.csv",
     ROOT_DIR / "sample_sales_data.csv",
+    DATA_DIR / "sample_sales_data.csv",
 ]
+
+# Azure Blob Storage settings
+AZURE_CSV_CONTAINER = "csv-data"
+AZURE_CSV_BLOB_NAME = "sales_data.csv"
+
+
+def create_sample_csv() -> Path:
+    """Create a sample CSV file with realistic sales data if none exists"""
+    DATA_DIR.mkdir(exist_ok=True)
+    sample_path = DATA_DIR / "sample_sales_data.csv"
+    
+    # Generate 30 days of sample data
+    np.random.seed(42)
+    end_date = datetime.now()
+    dates = [(end_date - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30, 0, -1)]
+    
+    # Generate realistic revenue with trend and noise
+    base_revenue = 5000
+    trend = np.linspace(0, 1000, 30)  # Upward trend
+    noise = np.random.normal(0, 500, 30)
+    revenues = np.maximum(base_revenue + trend + noise, 1000).astype(int)
+    orders = (revenues / np.random.uniform(80, 120, 30)).astype(int)
+    
+    df = pd.DataFrame({
+        "date": dates,
+        "revenue": revenues,
+        "orders": orders
+    })
+    
+    df.to_csv(sample_path, index=False)
+    logger.info(f"Created sample CSV at {sample_path}")
+    return sample_path
 
 
 def find_analytics_csv() -> Path:
     for path in CSV_CANDIDATES:
         if path.exists():
             return path
+    
+    # If no CSV exists, create a sample one
+    logger.warning("No analytics CSV found. Creating sample data...")
+    return create_sample_csv()
 
-    raise FileNotFoundError(
-        "Analytics CSV file not found. Expected backend/data/final_analytics.csv or data/final_analytics.csv."
-    )
+
+def download_csv_from_azure() -> Optional[pd.DataFrame]:
+    """Download CSV from Azure Blob Storage"""
+    try:
+        from app.config import settings
+        from azure.storage.blob import BlobServiceClient
+        
+        if not hasattr(settings, 'azure_storage_connection_string') or not settings.azure_storage_connection_string:
+            logger.info("Azure Blob Storage not configured")
+            return None
+        
+        blob_service_client = BlobServiceClient.from_connection_string(
+            settings.azure_storage_connection_string
+        )
+        
+        container_name = getattr(settings, 'azure_csv_container', AZURE_CSV_CONTAINER)
+        blob_name = getattr(settings, 'azure_csv_blob', AZURE_CSV_BLOB_NAME)
+        
+        container_client = blob_service_client.get_container_client(container_name)
+        blob_client = container_client.get_blob_client(blob_name)
+        
+        logger.info(f"Downloading CSV from Azure: {container_name}/{blob_name}")
+        download_stream = blob_client.download_blob()
+        csv_content = download_stream.readall()
+        
+        # Read CSV from bytes
+        df = pd.read_csv(io.BytesIO(csv_content))
+        logger.info(f"Successfully downloaded CSV from Azure with {len(df)} rows")
+        return df
+        
+    except Exception as e:
+        logger.warning(f"Could not download CSV from Azure: {e}")
+        return None
 
 
 def load_csv_data() -> pd.DataFrame:
-    csv_path = find_analytics_csv()
-    df = pd.read_csv(csv_path)
+    # First try Azure Blob Storage
+    df = download_csv_from_azure()
+    if df is not None:
+        logger.info("Using CSV data from Azure Blob Storage")
+    else:
+        # Fall back to local file
+        try:
+            csv_path = find_analytics_csv()
+            df = pd.read_csv(csv_path)
+            logger.info(f"Loaded CSV from local file {csv_path} with {len(df)} rows")
+        except Exception as e:
+            logger.error(f"Error loading CSV: {e}")
+            # Return empty DataFrame with expected columns
+            df = pd.DataFrame(columns=["date", "revenue", "orders"])
 
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")

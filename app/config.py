@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     azure_document_intelligence_key: str = ""
     azure_search_endpoint: str = ""
     azure_search_key: str = ""
+    azure_search_index_name: str = "admin-documents"
+    azure_storage_container_name: str = "documents"
+    azure_csv_container: str = "csv-data"  # Container for pipeline CSV files
+    azure_csv_blob: str = "sales_data.csv"  # Blob name for pipeline CSV
 
     # Azure Power BI Settings
     azure_tenant_id: str = ""

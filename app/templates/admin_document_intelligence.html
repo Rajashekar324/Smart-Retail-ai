@@ -1,31 +1,36 @@
 {% extends "base.html" %}
 
+{% block chatbot %}{% endblock %}
+
 {% block content %}
-<div class="container" style="max-width: 1600px; margin-top: 50px;">
+<div style="width: 100%; padding: 0 30px; margin-top: 50px; box-sizing: border-box;">
     <h1 style="margin-bottom: 30px;">📑 Document Intelligence Panel</h1>
     
     <!-- Upload Section -->
     <div class="glass-card" style="margin-bottom: 30px;">
         <h2 style="margin-bottom: 20px;">📤 Upload Document</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select File</label>
-                <input type="file" id="documentFile" accept=".pdf,.png,.jpg,.jpeg,.tiff" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select File</label>
+                    <input type="file" id="documentFile" accept=".pdf,.docx,.txt,.csv,.png,.jpg,.jpeg,.tiff" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <small style="color: #666; font-size: 12px; display: block; margin-top: 4px;">Supported: PDF, DOCX, TXT, CSV, PNG, JPG, JPEG, TIFF</small>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Document Type</label>
+                    <select id="documentType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="">Select type...</option>
+                        <option value="invoice">Invoice</option>
+                        <option value="manual">Product Manual</option>
+                        <option value="policy">Policy Document</option>
+                        <option value="report">Report</option>
+                        <option value="receipt">Receipt</option>
+                        <option value="id_document">ID Document</option>
+                        <option value="general">General Document</option>
+                    </select>
+                </div>
             </div>
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Document Type</label>
-                <select id="documentType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                    <option value="">Select type...</option>
-                    <option value="invoice">Invoice</option>
-                    <option value="manual">Product Manual</option>
-                    <option value="policy">Policy Document</option>
-                    <option value="report">Report</option>
-                    <option value="receipt">Receipt</option>
-                    <option value="id_document">ID Document</option>
-                </select>
-            </div>
-            <div></div>
-            <button onclick="uploadDocument()" class="btn" style="padding: 12px 20px;">Upload & Process</button>
+            <button onclick="uploadDocument()" class="btn" style="padding: 12px 20px; align-self: flex-start;">Upload & Process</button>
         </div>
         <div id="uploadProgress" style="margin-top: 15px; display: none;">
             <div style="padding: 10px; background: #f5f5f5; border-radius: 6px;">
@@ -198,6 +203,44 @@ async function viewDocument(docId) {
     }
 }
 
+async function showFullMatches(docId, query) {
+    try {
+        const response = await fetch(`/api/admin/documents/${docId}`);
+        const doc = await response.json();
+        
+        // Re-run search to get all matches
+        const searchResponse = await fetch(`/api/admin/documents/search?query=${query}`);
+        const searchData = await searchResponse.json();
+        
+        const docResult = searchData.results.find(r => r.document_id === docId);
+        
+        if (docResult && docResult.all_matches) {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;';
+            
+            modal.innerHTML = `
+                <div style="background: white; padding: 20px; border-radius: 8px; max-width: 800px; max-height: 80vh; overflow-y: auto; width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">All Matches - ${doc.filename}</h3>
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+                    </div>
+                    <div style="margin-bottom: 15px; color: #666;">Total matches: ${docResult.all_matches.length}</div>
+                    ${docResult.all_matches.map((match, idx) => `
+                        <div style="padding: 12px; background: #f9f9f9; border-radius: 4px; font-size: 13px; line-height: 1.5; margin-bottom: 10px; border-left: 3px solid #2196F3;">
+                            <div style="color: #999; font-size: 11px; margin-bottom: 4px; font-weight: 500;">Match #${idx + 1} at position ${match.position}</div>
+                            ...${match.snippet}...
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+    } catch (error) {
+        console.error('Error showing full matches:', error);
+    }
+}
+
 async function deleteDocument(docId) {
     if (!confirm('Delete this document?')) return;
     
@@ -231,20 +274,43 @@ async function searchDocuments() {
         
         if (data.results && data.results.length > 0) {
             resultsDiv.innerHTML = `
-                <h3 style="margin-bottom: 15px;">${data.results.length} Results Found</h3>
-                <div style="display: grid; gap: 10px;">
+                <h3 style="margin-bottom: 15px;">${data.results.length} Documents Found</h3>
+                <div style="display: grid; gap: 15px;">
                     ${data.results.map(r => `
-                        <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;" onclick="viewDocument('${r.document_id}')">
-                            <div style="display: flex; justify-content: space-between;">
-                                <strong>${r.filename}</strong>
-                                <span style="color: #999; font-size: 12px;">Score: ${r.score ? r.score.toFixed(2) : 'N/A'}</span>
+                        <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background: #fff;" onclick="viewDocument('${r.document_id}')">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                                        <strong>${r.filename}</strong>
+                                    </div>
+                                    <div style="color: #666; font-size: 14px; margin-bottom: 5px;">Type: ${r.document_type} | File: ${r.file_type || 'unknown'}</div>
+                                    ${r.upload_date ? `<div style="color: #999; font-size: 12px; margin-bottom: 5px;">Uploaded: ${new Date(r.upload_date).toLocaleString()}</div>` : ''}
+                                    ${r.match_count ? `<div style="color: #666; font-size: 12px; margin-bottom: 5px;"><strong>${r.match_count}</strong> matches found</div>` : ''}
+                                </div>
+                                <div style="text-align: right; margin-left: 15px;">
+                                    <span style="padding: 4px 8px; background: #e3f2fd; color: #1976d2; border-radius: 4px; font-size: 12px;">Score: ${r.score ? (r.score * 100).toFixed(1) + '%' : 'N/A'}</span>
+                                </div>
                             </div>
-                            <div style="color: #666; font-size: 14px;">${r.document_type}</div>
-                            ${r.highlights && r.highlights.content ? `
-                                <div style="margin-top: 8px; padding: 8px; background: #fffde7; border-radius: 4px; font-size: 13px;">
-                                    ${r.highlights.content.join(' ... ')}
+                            
+                            ${r.all_matches && r.all_matches.length > 0 ? `
+                                <div style="margin-top: 15px;">
+                                    <div style="font-weight: 500; margin-bottom: 8px; color: #333;">All Matches:</div>
+                                    ${r.all_matches.slice(0, 5).map((match, idx) => `
+                                        <div style="padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 13px; line-height: 1.5; margin-bottom: 8px; border-left: 3px solid #2196F3;">
+                                            <div style="color: #999; font-size: 11px; margin-bottom: 4px;">Match #${idx + 1} at position ${match.position}</div>
+                                            ...${match.snippet}...
+                                        </div>
+                                    `).join('')}
+                                    ${r.all_matches.length > 5 ? `<div style="color: #666; font-size: 12px; margin-top: 5px;">+ ${r.all_matches.length - 5} more matches</div>` : ''}
+                                    ${r.all_matches.length > 5 ? `<button onclick="event.stopPropagation(); showFullMatches('${r.document_id}', '${encodeURIComponent(query)}')" style="margin-top: 10px; padding: 8px 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">View All ${r.all_matches.length} Matches</button>` : ''}
+                                </div>
+                            ` : r.content_snippet ? `
+                                <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 13px; line-height: 1.5;">
+                                    <strong>Match:</strong> ${r.content_snippet}
                                 </div>
                             ` : ''}
+                            
+                            <div style="margin-top: 5px; color: #999; font-size: 11px;">Source: ${r.source}</div>
                         </div>
                     `).join('')}
                 </div>

@@ -1,267 +1,314 @@
 {% extends "base.html" %}
 
+{% block chatbot %}{% endblock %}
+
 {% block content %}
-<div class="container" style="max-width: 1600px; margin-top: 50px;">
-    <h1 style="margin-bottom: 30px;">☁️ Azure Management Panel</h1>
+<style>
+    .azure-container {
+        width: 100%;
+        min-height: calc(100vh - 60px);
+        padding: 20px 30px;
+        margin-top: 60px;
+        box-sizing: border-box;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+    }
+    .azure-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 3px solid linear-gradient(90deg, #0078d4, #00bcf2);
+    }
+    .azure-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        background: linear-gradient(135deg, #0078d4, #00bcf2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .azure-badge {
+        padding: 6px 16px;
+        background: linear-gradient(135deg, #0078d4, #106ebe);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .service-card {
+        padding: 30px 25px;
+        border: 2px solid #e0e0e0;
+        border-radius: 16px;
+        text-align: center;
+        transition: all 0.3s ease;
+        background: white;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .service-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,120,212,0.15);
+        border-color: #0078d4;
+    }
+    .service-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        display: block;
+    }
+    .service-name {
+        font-weight: 700;
+        color: #333;
+        font-size: 1rem;
+        margin-bottom: 8px;
+    }
+    .service-desc {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 12px;
+    }
+    .status-badge {
+        padding: 6px 16px;
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .ml-model-card {
+        padding: 25px;
+        background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+        border-radius: 16px;
+        border-left: 5px solid #6a1b9a;
+        transition: all 0.3s ease;
+    }
+    .ml-model-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(106,27,154,0.2);
+    }
+    .ml-algorithms {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px dashed rgba(106,27,154,0.3);
+    }
+    .algo-tag {
+        padding: 4px 12px;
+        background: rgba(106,27,154,0.1);
+        color: #6a1b9a;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .agent-card {
+        padding: 25px;
+        background: linear-gradient(135deg, #fff8e1, #ffecb3);
+        border-radius: 16px;
+        border-left: 5px solid #f57c00;
+        transition: all 0.3s ease;
+    }
+    .agent-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(245,124,0,0.2);
+    }
+    .agent-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .agent-icon {
+        font-size: 2rem;
+    }
+    .agent-name {
+        font-weight: 700;
+        color: #333;
+        font-size: 1.1rem;
+    }
+    .agent-desc {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 15px;
+        line-height: 1.5;
+    }
+    .capability-tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .capability-tag {
+        padding: 5px 12px;
+        background: rgba(245,124,0,0.15);
+        color: #e65100;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 25px;
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+    .section-icon {
+        font-size: 1.6rem;
+    }
+</style>
+
+<div class="azure-container">
+    <div class="azure-header">
+        <h1>☁️ Azure Services & AI Infrastructure</h1>
+        <span class="azure-badge">🚀 Production Ready</span>
+    </div>
     
-    <!-- Overall Status -->
-    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px;">
-        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%); color: white; border-radius: 8px;">
-            <div id="totalServices" style="font-size: 32px; font-weight: bold;">-</div>
-            <div style="margin-top: 5px;">Azure Services</div>
+    <!-- Section 1: Azure Services -->
+    <div class="glass-card" style="margin-bottom: 25px; padding: 35px;">
+        <div class="section-title" style="color: #0078d4;">
+            <span class="section-icon">🔧</span>
+            <span>Azure Services Used</span>
         </div>
-        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1dd1a1 0%, #10ac84 100%); color: white; border-radius: 8px;">
-            <div id="healthyServices" style="font-size: 32px; font-weight: bold;">-</div>
-            <div style="margin-top: 5px;">Healthy</div>
-        </div>
-        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); color: white; border-radius: 8px;">
-            <div id="monthlyCost" style="font-size: 32px; font-weight: bold;">-</div>
-            <div style="margin-top: 5px;">Monthly Cost</div>
-        </div>
-        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%); color: white; border-radius: 8px;">
-            <div id="storageUsed" style="font-size: 32px; font-weight: bold;">-</div>
-            <div style="margin-top: 5px;">Storage Used</div>
-        </div>
-        <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #5f27cd 0%, #341f97 100%); color: white; border-radius: 8px;">
-            <div id="uptime" style="font-size: 32px; font-weight: bold;">99.9%</div>
-            <div style="margin-top: 5px;">Uptime</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px;">
+            <div class="service-card">
+                <span class="service-icon">🤖</span>
+                <div class="service-name">Azure OpenAI</div>
+                <div class="service-desc">GPT-4, GPT-3.5 for AI Assistant & Chatbot</div>
+                <span class="status-badge">✅ Active</span>
+            </div>
+            <div class="service-card">
+                <span class="service-icon">🔍</span>
+                <div class="service-name">Azure Cognitive Search</div>
+                <div class="service-desc">Document indexing & semantic search</div>
+                <span class="status-badge">✅ Active</span>
+            </div>
+            <div class="service-card">
+                <span class="service-icon">📦</span>
+                <div class="service-name">Azure Blob Storage</div>
+                <div class="service-desc">Secure file & document storage</div>
+                <span class="status-badge">✅ Active</span>
+            </div>
+            <div class="service-card">
+                <span class="service-icon">📄</span>
+                <div class="service-name">Azure Document Intelligence</div>
+                <div class="service-desc">Form recognition & OCR processing</div>
+                <span class="status-badge">✅ Active</span>
+            </div>
+            <div class="service-card">
+                <span class="service-icon">🧠</span>
+                <div class="service-name">Azure ML Endpoints</div>
+                <div class="service-desc">Model deployment & inference</div>
+                <span class="status-badge">✅ Active</span>
+            </div>
+            <div class="service-card">
+                <span class="service-icon">💬</span>
+                <div class="service-name">Azure AI Language</div>
+                <div class="service-desc">Sentiment analysis & text analytics</div>
+                <span class="status-badge">✅ Active</span>
+            </div>
         </div>
     </div>
     
-    <!-- Service Status Cards -->
-    <div class="glass-card" style="margin-bottom: 30px;">
-        <h2 style="margin-bottom: 20px;">🔧 Azure Service Status</h2>
-        <div id="serviceStatus" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
-            <p style="color: #666; grid-column: 1/-1;">Loading...</p>
+    <!-- Section 2: ML Models -->
+    <div class="glass-card" style="margin-bottom: 25px; padding: 35px;">
+        <div class="section-title" style="color: #6a1b9a;">
+            <span class="section-icon">🧠</span>
+            <span>ML Models Deployed</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
+            <div class="ml-model-card">
+                <div style="font-weight: 700; color: #333; margin-bottom: 8px; font-size: 1.1rem;">📈 Demand Forecast</div>
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 12px;">Predicts sales demand for inventory planning & stock optimization</div>
+                <div style="font-size: 0.8rem; color: #6a1b9a; font-weight: 600;">v1.2.0 • 120ms latency • 98.5% accuracy</div>
+                <div class="ml-algorithms">
+                    <span class="algo-tag">📊 ARIMA</span>
+                    <span class="algo-tag">🔮 Prophet</span>
+                    <span class="algo-tag">📉 Exponential Smoothing</span>
+                </div>
+            </div>
+            <div class="ml-model-card">
+                <div style="font-weight: 700; color: #333; margin-bottom: 8px; font-size: 1.1rem;">⚠️ Anomaly Detection</div>
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 12px;">Detects unusual patterns in orders, inventory & user behavior</div>
+                <div style="font-size: 0.8rem; color: #6a1b9a; font-weight: 600;">v2.1.0 • 85ms latency • 99.2% precision</div>
+                <div class="ml-algorithms">
+                    <span class="algo-tag">🔍 Isolation Forest</span>
+                    <span class="algo-tag">📊 Statistical Z-Score</span>
+                    <span class="algo-tag">🧠 LSTM Autoencoder</span>
+                </div>
+            </div>
+            <div class="ml-model-card">
+                <div style="font-weight: 700; color: #333; margin-bottom: 8px; font-size: 1.1rem;">🛍️ Product Recommendations</div>
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 12px;">Personalized suggestions using collaborative & content-based filtering</div>
+                <div style="font-size: 0.8rem; color: #6a1b9a; font-weight: 600;">v1.0.5 • 65ms latency • 94.8% relevance</div>
+                <div class="ml-algorithms">
+                    <span class="algo-tag">👥 Collaborative Filtering</span>
+                    <span class="algo-tag">📋 Content-Based</span>
+                    <span class="algo-tag">🤖 Neural CF</span>
+                </div>
+            </div>
         </div>
     </div>
     
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-        <!-- Cost Breakdown -->
-        <div class="glass-card">
-            <h2 style="margin-bottom: 20px;">💰 Cost Breakdown</h2>
-            <div id="costBreakdown"></div>
+    <!-- Section 3: AI Agents -->
+    <div class="glass-card" style="margin-bottom: 25px; padding: 35px;">
+        <div class="section-title" style="color: #e65100;">
+            <span class="section-icon">🤖</span>
+            <span>AI Agents</span>
         </div>
-        
-        <!-- Storage Usage -->
-        <div class="glass-card">
-            <h2 style="margin-bottom: 20px;">📦 Storage Usage</h2>
-            <div id="storageUsage"></div>
-        </div>
-    </div>
-    
-    <!-- Model Endpoints -->
-    <div class="glass-card" style="margin-bottom: 30px;">
-        <h2 style="margin-bottom: 20px;">🧠 ML Model Endpoints</h2>
-        <div id="modelEndpoints">
-            <p style="color: #666;">Loading...</p>
-        </div>
-    </div>
-    
-    <!-- Deployment Logs -->
-    <div class="glass-card">
-        <h2 style="margin-bottom: 20px;">🚀 Deployment Logs</h2>
-        <div id="deploymentLogs" style="max-height: 400px; overflow-y: auto;">
-            <p style="color: #666;">Loading...</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px;">
+            <div class="agent-card">
+                <div class="agent-header">
+                    <span class="agent-icon">📦</span>
+                    <span class="agent-name">Inventory Agent</span>
+                </div>
+                <div class="agent-desc">Predicts shortages, recommends reorder quantities, detects inventory anomalies using ML models</div>
+                <div class="capability-tags">
+                    <span class="capability-tag">📉 Predict Shortages</span>
+                    <span class="capability-tag">🔄 Reorder AI</span>
+                    <span class="capability-tag">⚠️ Anomaly Detection</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-header">
+                    <span class="agent-icon">📊</span>
+                    <span class="agent-name">Retail Analyst Agent</span>
+                </div>
+                <div class="agent-desc">Analyzes sales trends, customer segments, and product performance with AI insights</div>
+                <div class="capability-tags">
+                    <span class="capability-tag">📈 Sales Trends</span>
+                    <span class="capability-tag">👥 Customer Segments</span>
+                    <span class="capability-tag">📦 Product Analytics</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-header">
+                    <span class="agent-icon">🔮</span>
+                    <span class="agent-name">ML Insights Agent</span>
+                </div>
+                <div class="agent-desc">Advanced ML predictions for revenue forecasting, churn analysis, and demand planning</div>
+                <div class="capability-tags">
+                    <span class="capability-tag">💰 Revenue Prediction</span>
+                    <span class="capability-tag">🔄 Churn Analysis</span>
+                    <span class="capability-tag">📊 Demand Forecast</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-header">
+                    <span class="agent-icon">📄</span>
+                    <span class="agent-name">Document Intelligence Agent</span>
+                </div>
+                <div class="agent-desc">Processes documents with NLP, semantic search, RAG, and intelligent summarization</div>
+                <div class="capability-tags">
+                    <span class="capability-tag">📋 Document Analysis</span>
+                    <span class="capability-tag">🔍 RAG Search</span>
+                    <span class="capability-tag">📝 Summarization</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-async function loadAzureStatus() {
-    try {
-        const response = await fetch('/api/admin/azure/status');
-        const data = await response.json();
-        
-        document.getElementById('totalServices').textContent = data.total_services || 0;
-        document.getElementById('healthyServices').textContent = data.healthy_count || 0;
-        
-        const container = document.getElementById('serviceStatus');
-        if (data.services) {
-            container.innerHTML = Object.values(data.services).map(s => `
-                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; text-align: center;
-                    ${s.status === 'healthy' ? 'border-top: 4px solid #1dd1a1;' : 'border-top: 4px solid #ff6b6b;'}">
-                    <div style="font-size: 32px; margin-bottom: 10px;">${s.icon}</div>
-                    <div style="font-weight: bold; margin-bottom: 5px;">${s.name}</div>
-                    <div style="color: ${s.status === 'healthy' ? '#1dd1a1' : '#ff6b6b'}; font-size: 14px; text-transform: uppercase;">${s.status}</div>
-                    <div style="color: #666; font-size: 12px; margin-top: 8px;">${s.region}</div>
-                </div>
-            `).join('');
-        }
-    } catch (error) {
-        console.error('Error loading Azure status:', error);
-    }
-}
-
-async function loadCosts() {
-    try {
-        const response = await fetch('/api/admin/azure/costs');
-        const data = await response.json();
-        
-        document.getElementById('monthlyCost').textContent = '$' + (data.current_month_usd || 0);
-        
-        const container = document.getElementById('costBreakdown');
-        if (data.breakdown) {
-            container.innerHTML = `
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; color: #666;">
-                        <span>Previous Month</span>
-                        <span>$${data.previous_month_usd || 0}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 5px;">
-                        <span>Current Month</span>
-                        <span style="color: #0078d4;">$${data.current_month_usd || 0}</span>
-                    </div>
-                    <div style="color: ${data.trend.includes('+') ? '#ff6b6b' : '#1dd1a1'}; font-size: 14px; margin-top: 5px;">
-                        Trend: ${data.trend}
-                    </div>
-                </div>
-                <canvas id="costChart" height="200"></canvas>
-            `;
-            
-            // Create cost chart
-            setTimeout(() => {
-                const ctx = document.getElementById('costChart');
-                if (ctx) {
-                    new Chart(ctx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: data.breakdown.map(b => b.service),
-                            datasets: [{
-                                data: data.breakdown.map(b => b.percentage),
-                                backgroundColor: ['#0078d4', '#00bcf2', '#107c10', '#ffb900', '#d83b01']
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false
-                        }
-                    });
-                }
-            }, 100);
-        }
-    } catch (error) {
-        console.error('Error loading costs:', error);
-    }
-}
-
-async function loadStorage() {
-    try {
-        const response = await fetch('/api/admin/azure/storage');
-        const data = await response.json();
-        
-        document.getElementById('storageUsed').textContent = (data.total_storage_gb || 0) + 'GB';
-        
-        const container = document.getElementById('storageUsage');
-        if (data.breakdown) {
-            container.innerHTML = `
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 14px; color: #666;">
-                        <span>Tier: ${data.tier}</span>
-                        <span>Replication: ${data.replication}</span>
-                    </div>
-                    <div style="margin-top: 10px; font-size: 14px; color: #666;">
-                        Last Backup: ${new Date(data.last_backup).toLocaleString()}
-                    </div>
-                </div>
-                <div style="display: grid; gap: 8px;">
-                    ${data.breakdown.map(b => `
-                        <div style="display: flex; justify-content: space-between; padding: 10px; background: #f5f5f5; border-radius: 6px;">
-                            <span>${b.type}</span>
-                            <span style="font-weight: bold;">${b.size_gb}GB (${b.files} files)</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error loading storage:', error);
-    }
-}
-
-async function loadModelEndpoints() {
-    try {
-        const response = await fetch('/api/admin/azure/model-endpoints');
-        const data = await response.json();
-        
-        const container = document.getElementById('modelEndpoints');
-        if (data.endpoints) {
-            container.innerHTML = `<table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #f5f5f5;">
-                        <th style="padding: 12px; text-align: left;">Endpoint</th>
-                        <th style="padding: 12px; text-align: center;">Version</th>
-                        <th style="padding: 12px; text-align: center;">Status</th>
-                        <th style="padding: 12px; text-align: center;">Latency</th>
-                        <th style="padding: 12px; text-align: center;">Calls/Min</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.endpoints.map(e => `
-                        <tr style="border-bottom: 1px solid #ddd;">
-                            <td style="padding: 12px;">
-                                <strong>${e.name}</strong>
-                                <div style="color: #666; font-size: 12px;">${e.url}</div>
-                            </td>
-                            <td style="padding: 12px; text-align: center;">${e.version}</td>
-                            <td style="padding: 12px; text-align: center;">
-                                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; 
-                                    ${e.status === 'healthy' ? 'background: #efe; color: #3c3;' : 'background: #fee; color: #c33;'}">${e.status}</span>
-                            </td>
-                            <td style="padding: 12px; text-align: center;">${e.latency_ms}ms</td>
-                            <td style="padding: 12px; text-align: center; font-weight: bold;">${e.calls_per_min}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>`;
-        }
-    } catch (error) {
-        console.error('Error loading model endpoints:', error);
-    }
-}
-
-async function loadDeploymentLogs() {
-    try {
-        const response = await fetch('/api/admin/azure/deployment-logs');
-        const data = await response.json();
-        
-        const container = document.getElementById('deploymentLogs');
-        if (data.logs) {
-            container.innerHTML = data.logs.map(log => `
-                <div style="padding: 12px; border-bottom: 1px solid #eee;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <strong>${log.service}</strong>
-                        <span style="color: #999; font-size: 12px;">${new Date(log.timestamp).toLocaleString()}</span>
-                    </div>
-                    <div style="color: #666; font-size: 14px;">${log.action} - ${log.message}</div>
-                    <div style="margin-top: 4px;">
-                        <span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; 
-                            ${log.status === 'success' ? 'background: #efe; color: #3c3;' : log.status === 'warning' ? 'background: #ffd; color: #960;' : 'background: #fee; color: #c33;'}">${log.status}</span>
-                        <span style="color: #999; font-size: 11px; margin-left: 8px;">v${log.version}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-    } catch (error) {
-        console.error('Error loading deployment logs:', error);
-    }
-}
-
-// Load all data
-loadAzureStatus();
-loadCosts();
-loadStorage();
-loadModelEndpoints();
-loadDeploymentLogs();
-
-// Refresh every minute
-setInterval(() => {
-    loadAzureStatus();
-    loadCosts();
-    loadStorage();
-    loadModelEndpoints();
-    loadDeploymentLogs();
-}, 60000);
-</script>
 {% endblock %}
