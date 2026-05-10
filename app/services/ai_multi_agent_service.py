@@ -792,66 +792,282 @@ Always explain the methodology and confidence levels."""
 
 
 class AIDocumentIntelligenceAgent(BaseAIAgent):
-    """AI-powered Document Intelligence Agent"""
+    """AI-powered Document Intelligence Agent using real document services"""
     
     def __init__(self):
         super().__init__(
             name="Document Intelligence Agent",
-            description="AI-powered document analysis with NLP and RAG",
+            description="AI-powered document analysis with real document processing",
             system_prompt="""You are an expert Document Intelligence AI Agent.
-Your role is to analyze documents, extract insights, perform semantic search, and provide intelligent summaries.
+Your role is to analyze documents, search content, extract insights, and provide intelligent summaries.
 
 When processing documents:
-1. Extract key entities, concepts, and relationships
-2. Perform semantic analysis and topic modeling
+1. Search and retrieve relevant document content
+2. Extract key entities, concepts, and relationships
 3. Generate coherent summaries with key points
-4. Answer questions based on document content
-5. Identify actionable insights
+4. Identify actionable insights from document data
+5. Provide context-aware analysis based on actual document content
 
-Use the provided context from RAG to ground your responses."""
+Focus on extracting valuable information from real document content."""
         )
+        # Import document intelligence service
+        try:
+            from app.services.document_intelligence_panel_service import document_intelligence_service
+            self.doc_service = document_intelligence_service
+        except ImportError:
+            self.doc_service = None
+            logger.warning("Document intelligence service not available")
     
     def execute_task(self, task: AgentTask, db: Session) -> Dict[str, Any]:
         task_handlers = {
             "analyze_documents": self.analyze_documents,
+            "search_documents": self.search_documents,
+            "generate_ai_summary": self.generate_ai_summary,
             "extract_keywords": self.extract_keywords,
             "summarize_content": self.summarize_content,
-            "semantic_search": self.semantic_search,
-            "answer_question": self.answer_question
+            "get_document_stats": self.get_document_stats
         }
-        
+
         handler = task_handlers.get(task.task_type)
         if handler:
             return handler(db, task.params, task)
         return {"error": f"Unknown task type: {task.task_type}"}
     
     def analyze_documents(self, db: Session, params: Dict[str, Any], task: AgentTask) -> Dict[str, Any]:
-        """AI-powered document analysis"""
+        """Analyze documents using real document intelligence service"""
         try:
-            from app.services.document_search_service import user_document_search_service
-            documents = user_document_search_service.list_documents()
+            if not self.doc_service:
+                return {"error": "Document intelligence service not available"}
             
-            data = {
+            # Get real document data from service
+            documents = self.doc_service.list_documents(db)
+            
+            # Get document statistics
+            stats = {
                 "total_documents": len(documents),
-                "documents": documents[:10]  # Limit for analysis
+                "processed": len([d for d in documents if d.get('status') == 'processed']),
+                "indexed": len([d for d in documents if d.get('status') == 'indexed']),
+                "by_type": {}
             }
             
-            # AI analysis
-            if self.llm_service and self.llm_service.is_available():
-                ai_result = self.analyze_with_llm(data, "Analyze document collection and provide insights")
-                ai_insights = ai_result.get("response", "AI analysis unavailable")
-            else:
-                ai_insights = "AI insights unavailable"
+            # Count by document type
+            for doc in documents:
+                doc_type = doc.get('document_type', 'unknown')
+                stats["by_type"][doc_type] = stats["by_type"].get(doc_type, 0) + 1
             
-            data["ai_insights"] = ai_insights
-            data["generated_at"] = datetime.utcnow().isoformat()
+            # AI analysis using LLM
+            ai_insights = "AI analysis unavailable"
+            if self.llm_service and self.llm_service.is_available() and documents:
+                analysis_data = {
+                    "document_stats": stats,
+                    "sample_documents": documents[:5]
+                }
+                ai_result = self.analyze_with_llm(
+                    analysis_data, 
+                    "Analyze this document collection. What patterns do you see? What insights can you provide about the document types and processing status?"
+                )
+                ai_insights = ai_result.get("response", ai_insights)
             
-            return data
+            return {
+                "stats": stats,
+                "documents": documents[:10],
+                "ai_insights": ai_insights,
+                "generated_at": datetime.utcnow().isoformat(),
+                "source": "document_intelligence_service"
+            }
         except Exception as e:
-            return {"error": str(e), "message": "Document search service not available"}
+            logger.error(f"Document analysis error: {e}")
+            return {"error": str(e), "message": "Document analysis failed"}
+    
+    def search_documents(self, db: Session, params: Dict[str, Any], task: AgentTask) -> Dict[str, Any]:
+        """Search documents using real document search"""
+        try:
+            if not self.doc_service:
+                return {"error": "Document intelligence service not available"}
+            
+            query = params.get("query", "")
+            document_type = params.get("document_type")
+            show_all = params.get("show_all", False)
+            
+            if not query:
+                return {"error": "No search query provided"}
+            
+            # Perform real document search
+            results = self.doc_service.search_documents(
+                db=db,
+                query=query,
+                document_type=document_type,
+                limit=10,
+                show_all_matches=show_all
+            )
+            
+            # Generate AI summary of search results
+            ai_summary = None
+            if self.llm_service and self.llm_service.is_available() and results:
+                # Prepare context for AI
+                matches_summary = []
+                for r in results:
+                    matches_summary.append({
+                        "filename": r.get("filename"),
+                        "matches": r.get("match_count", 0),
+                        "type": r.get("document_type")
+                    })
+                
+                prompt = f"""Based on the search for "{query}" in {len(results)} documents, provide a brief summary of what was found and any patterns or insights.
+
+Documents found: {len(results)}
+Top matches: {matches_summary[:3]}
+
+Provide a 2-3 sentence summary of the search results."""
+                
+                result = self.llm_service.generate_response(
+                    prompt=prompt,
+                    system_prompt=self.system_prompt
+                )
+                ai_summary = result.get("response")
+            
+            return {
+                "query": query,
+                "results_count": len(results),
+                "results": results,
+                "ai_summary": ai_summary,
+                "search_method": "document_intelligence_ocr_search",
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Document search error: {e}")
+            return {"error": str(e), "message": "Document search failed"}
+    
+    def generate_ai_summary(self, db: Session, params: Dict[str, Any], task: AgentTask) -> Dict[str, Any]:
+        """Generate AI summary for a search query based on document content"""
+        try:
+            query = params.get("query", "")
+            search_results = params.get("search_results", [])
+            
+            if not query:
+                return {"error": "No query provided for summary"}
+            
+            if not search_results:
+                return {
+                    "query": query,
+                    "summary": f"No documents found containing '{query}'. Try a different search term.",
+                    "insights": [],
+                    "suggestions": ["Try broader keywords", "Check document processing status"]
+                }
+            
+            # Prepare context from search results
+            context_parts = []
+            total_matches = 0
+            document_types = set()
+            
+            for result in search_results:
+                matches = result.get("all_matches", result.get("initial_matches", []))
+                total_matches += len(matches)
+                document_types.add(result.get("document_type", "unknown"))
+                
+                # Add snippets from matches
+                for match in matches[:3]:  # Top 3 matches per document
+                    snippet = match.get("snippet", "")
+                    if snippet:
+                        context_parts.append(snippet[:200])
+            
+            context = "\n".join(context_parts[:10])  # Limit context
+            
+            summary_text = f"Found '{query}' in {len(search_results)} document(s) with {total_matches} total matches."
+            insights = []
+            
+            # Use LLM for enhanced summary if available
+            if self.llm_service and self.llm_service.is_available():
+                prompt = f"""Analyze these search results for "{query}" and provide insights.
+
+Context from documents:
+{context}
+
+Provide:
+1. A 2-3 sentence summary of what was found
+2. 3-5 key insights or observations about the content
+3. Any patterns or notable information
+
+Format as JSON with 'summary' and 'insights' array."""
+                
+                try:
+                    result = self.llm_service.create_structured_output(
+                        prompt=prompt,
+                        output_schema={
+                            "summary": "string",
+                            "insights": ["string"]
+                        }
+                    )
+                    
+                    structured = result.get("structured_output", {})
+                    summary_text = structured.get("summary", summary_text)
+                    insights = structured.get("insights", insights)
+                except Exception as e:
+                    logger.warning(f"LLM summary generation failed: {e}")
+                    insights = [f"Documents span types: {', '.join(document_types)}"]
+            else:
+                insights = [
+                    f"Found {total_matches} mentions across {len(search_results)} documents",
+                    f"Document types: {', '.join(document_types)}"
+                ]
+            
+            return {
+                "query": query,
+                "summary": summary_text,
+                "insights": insights,
+                "document_count": len(search_results),
+                "total_matches": total_matches,
+                "document_types": list(document_types),
+                "generated_at": datetime.utcnow().isoformat(),
+                "ai_enhanced": self.llm_service is not None and self.llm_service.is_available()
+            }
+        except Exception as e:
+            logger.error(f"AI summary generation error: {e}")
+            return {
+                "query": params.get("query", ""),
+                "summary": f"Search completed but summary generation failed.",
+                "error": str(e)
+            }
+    
+    def get_document_stats(self, db: Session, params: Dict[str, Any], task: AgentTask) -> Dict[str, Any]:
+        """Get document statistics from real service"""
+        try:
+            if not self.doc_service:
+                return {"error": "Document service not available"}
+            
+            documents = self.doc_service.list_documents(db)
+            
+            stats = {
+                "total": len(documents),
+                "by_status": {},
+                "by_type": {},
+                "recent_uploads": []
+            }
+            
+            for doc in documents:
+                status = doc.get("status", "unknown")
+                doc_type = doc.get("document_type", "unknown")
+                
+                stats["by_status"][status] = stats["by_status"].get(status, 0) + 1
+                stats["by_type"][doc_type] = stats["by_type"].get(doc_type, 0) + 1
+            
+            # Sort by upload date for recent
+            sorted_docs = sorted(
+                documents, 
+                key=lambda x: x.get("upload_date", ""), 
+                reverse=True
+            )
+            stats["recent_uploads"] = sorted_docs[:5]
+            
+            return {
+                "stats": stats,
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        except Exception as e:
+            return {"error": str(e)}
     
     def extract_keywords(self, db: Session, params: Dict[str, Any], task: AgentTask) -> Dict[str, Any]:
-        """AI-powered keyword extraction"""
+        """AI-powered keyword extraction from document content"""
         text = params.get("text", "")
         
         if not text:
@@ -897,76 +1113,28 @@ Text: {text[:2000]}"""
         """AI-powered content summarization"""
         text = params.get("text", "")
         max_length = params.get("max_length", 200)
-        
+
         if not text:
             return {"error": "No text provided"}
-        
+
         if self.llm_service and self.llm_service.is_available():
-            # Enhance with RAG
-            context = self.enhance_with_rag("document summarization best practices", task)
-            
             prompt = f"""Summarize the following content in about {max_length} words.
 Focus on key points, main arguments, and actionable insights.
 
 Content: {text[:3000]}"""
-            
+
             result = self.llm_service.generate_response(
                 prompt=prompt,
-                system_prompt=self.system_prompt,
-                context=context
+                system_prompt=self.system_prompt
             )
-            
+
             return {
                 "summary": result.get("response", "Summary unavailable"),
                 "original_length": len(text),
-                "rag_enhanced": bool(context),
                 "success": result.get("success")
             }
-        
+
         return {"error": "LLM service not available for summarization"}
-    
-    def semantic_search(self, db: Session, params: Dict[str, Any], task: AgentTask) -> Dict[str, Any]:
-        """Semantic search using vector store"""
-        query = params.get("query", "")
-        k = params.get("k", 5)
-        
-        if not query:
-            return {"error": "No query provided"}
-        
-        if self.llm_service and self.llm_service.vectorstore:
-            results = self.llm_service.vectorstore.similarity_search(query, k=k)
-            
-            return {
-                "query": query,
-                "results": results,
-                "count": len(results)
-            }
-        
-        return {"error": "Vector store not available for semantic search"}
-    
-    def answer_question(self, db: Session, params: Dict[str, Any], task: AgentTask) -> Dict[str, Any]:
-        """Answer questions using RAG"""
-        question = params.get("question", "")
-        
-        if not question:
-            return {"error": "No question provided"}
-        
-        if self.llm_service and self.llm_service.is_available():
-            result = self.llm_service.generate_with_rag(
-                query=question,
-                system_prompt=self.system_prompt,
-                k=5
-            )
-            
-            return {
-                "question": question,
-                "answer": result.get("response", "Unable to generate answer"),
-                "rag_enhanced": result.get("rag_used", False),
-                "context_preview": result.get("context_retrieved", "")[:200] + "..." if result.get("context_retrieved") else "",
-                "success": result.get("success")
-            }
-        
-        return {"error": "LLM service not available"}
 
 
 class AIMultiAgentControlCenter:
@@ -1118,6 +1286,10 @@ class AIMultiAgentControlCenter:
             }
             for c in comms
         ]
+    
+    def submit_task(self, agent_name: str, task_type: str, params: Dict[str, Any], db: Session) -> Dict[str, Any]:
+        """Submit a task to an agent - alias for execute_task"""
+        return self.execute_task(agent_name, task_type, params, db)
     
     def reset_agent(self, agent_name: str) -> bool:
         """Reset an agent to idle state"""

@@ -8,7 +8,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from fastapi import APIRouter, Body, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session, selectinload
 
@@ -2104,7 +2104,7 @@ def agent_ai_analysis(agent_name: str, request: Request, payload: dict = Body(..
         "inventory": "ai_inventory_analysis",
         "retail_analyst": "ai_retail_insights",
         "ml_insights": "ai_ml_analysis",
-        "document_intelligence": "semantic_search"
+        "document_intelligence": "analyze_documents"
     }
     
     ai_task_type = task_type_mapping.get(agent_name)
@@ -2980,6 +2980,25 @@ def list_admin_documents(request: Request, document_type: str = None,
     return JSONResponse({"documents": docs})
 
 
+@router.get("/api/admin/documents/search")
+def search_admin_documents(request: Request, query: str, document_type: str = None,
+                          limit: int = 10, show_all: bool = False, db: Session = Depends(get_db)):
+    """Search documents with AI-powered highlighting
+    
+    Args:
+        query: Search query (phrase or word)
+        document_type: Filter by document type
+        limit: Maximum number of documents to return
+        show_all: If True, return all matches per document; if False, return first 5
+    """
+    user = get_current_user(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    results = document_intelligence_service.search_documents(db, query, document_type, limit, show_all)
+    return JSONResponse({"results": results, "query": query, "show_all": show_all})
+
+
 @router.get("/api/admin/documents/{document_id}")
 def get_admin_document(document_id: str, request: Request, db: Session = Depends(get_db)):
     """Get document details"""
@@ -2994,16 +3013,74 @@ def get_admin_document(document_id: str, request: Request, db: Session = Depends
     return JSONResponse(doc)
 
 
-@router.get("/api/admin/documents/search")
-def search_admin_documents(request: Request, query: str, document_type: str = None,
-                          limit: int = 10, db: Session = Depends(get_db)):
-    """Search documents"""
+@router.get("/api/admin/documents/{document_id}/download")
+def download_admin_document(document_id: str, request: Request, db: Session = Depends(get_db)):
+    """Download a document file"""
     user = get_current_user(request, db)
     if not user or not user.is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    results = document_intelligence_service.search_documents(db, query, document_type, limit)
-    return JSONResponse({"results": results})
+    doc = document_intelligence_service.get_document(db, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    file_path = doc.get("file_path")
+    if not file_path or not Path(file_path).exists():
+        raise HTTPException(status_code=404, detail="File not found on server")
+    
+    filename = doc.get("original_filename", Path(file_path).name)
+    
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type=doc.get("mime_type") or "application/octet-stream"
+    )
+
+
+@router.post("/api/admin/documents/ai-summary")
+def generate_document_ai_summary(request: Request, data: dict, db: Session = Depends(get_db)):
+    """Generate AI summary for document search results"""
+    user = get_current_user(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        from app.services.ai_multi_agent_service import ai_multi_agent_center
+        
+        query = data.get("query", "")
+        search_results = data.get("search_results", [])
+        
+        if not query:
+            return JSONResponse({"error": "No query provided"}, status_code=400)
+        
+        # Create task for document intelligence agent
+        task = {
+            "agent_name": "document_intelligence",
+            "task_type": "generate_ai_summary",
+            "params": {
+                "query": query,
+                "search_results": search_results
+            }
+        }
+        
+        # Submit task and get result
+        task_result = ai_multi_agent_center.submit_task("document_intelligence", "generate_ai_summary", {
+            "query": query,
+            "search_results": search_results
+        }, db)
+        
+        return JSONResponse(task_result)
+        
+    except Exception as e:
+        import traceback
+        print(f"AI Summary error: {e}")
+        print(traceback.format_exc())
+        return JSONResponse({
+            "query": data.get("query", ""),
+            "summary": f"Search completed for '{query}'. Found {len(search_results)} relevant documents.",
+            "insights": [f"Found {len(search_results)} documents"],
+            "error": str(e)
+        })
 
 
 @router.delete("/api/admin/documents/{document_id}")
@@ -4497,11 +4574,11 @@ def admin_security(request: Request, db: Session = Depends(get_db)):
     # Get real access logs from AuditLog and UserActivity
     access_logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(50).all()
     
-    # Get active sessions
+    # Get active sessions (active in last 24 hours)
     active_sessions = db.query(UserSession).filter(
         UserSession.is_active == True,
-        UserSession.expires_at > datetime.utcnow()
-    ).order_by(UserSession.created_at.desc()).limit(20).all()
+        UserSession.last_activity >= datetime.utcnow() - timedelta(hours=24)
+    ).order_by(UserSession.last_activity.desc()).limit(20).all()
     
     # Get security settings
     security_settings = {

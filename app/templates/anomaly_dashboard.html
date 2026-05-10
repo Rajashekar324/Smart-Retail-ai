@@ -1,18 +1,32 @@
 {% extends "base.html" %}
 
+{% block chatbot %}{% endblock %}
+
 {% block content %}
-<div class="container" style="max-width: 1600px; margin-top: 50px;">
-    <h1 style="margin-bottom: 30px;">🚨 Anomaly Detection Dashboard</h1>
+<div style="width: 100%; padding: 0 30px; margin-top: 50px; box-sizing: border-box;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h1>🚨 Anomaly Detection Dashboard</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span id="lastUpdated" style="color: #666; font-size: 14px;">Last updated: Never</span>
+            <span id="liveIndicator" style="display: flex; align-items: center; gap: 5px; color: #10ac84; font-size: 14px;">
+                <span style="width: 8px; height: 8px; background: #10ac84; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                LIVE
+            </span>
+            <button onclick="loadAnomalyData()" class="btn" style="padding: 8px 16px;">🔄 Refresh</button>
+        </div>
+    </div>
     
     <!-- Fraud Metrics -->
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
         <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); color: white; border-radius: 8px;">
             <div id="totalAnomalies" style="font-size: 32px; font-weight: bold;">-</div>
             <div style="margin-top: 5px;">Detected Anomalies</div>
+            <div id="criticalCount" style="font-size: 12px; margin-top: 5px; opacity: 0.9;"></div>
         </div>
         <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%); color: white; border-radius: 8px;">
             <div id="fraudRate" style="font-size: 32px; font-weight: bold;">-</div>
             <div style="margin-top: 5px;">Fraud Rate</div>
+            <div id="fraudTrend" style="font-size: 12px; margin-top: 5px; opacity: 0.9;"></div>
         </div>
         <div class="glass-card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, #5f27cd 0%, #341f97 100%); color: white; border-radius: 8px;">
             <div id="cancellationRate" style="font-size: 32px; font-weight: bold;">-</div>
@@ -24,129 +38,356 @@
         </div>
     </div>
     
+    <!-- Detection Methods Summary -->
+    <div class="glass-card" style="margin-bottom: 30px;">
+        <h3 style="margin-bottom: 15px;">🔍 Detection Methods</h3>
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; text-align: center;" id="detectionMethods">
+            <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <div style="font-size: 24px; font-weight: bold; color: #5f27cd;" id="mlCount">-</div>
+                <div style="font-size: 12px; color: #666;">ML Based</div>
+            </div>
+            <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <div style="font-size: 24px; font-weight: bold; color: #ff9f43;" id="statisticalCount">-</div>
+                <div style="font-size: 12px; color: #666;">Statistical</div>
+            </div>
+            <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <div style="font-size: 24px; font-weight: bold; color: #ee5a5a;" id="velocityCount">-</div>
+                <div style="font-size: 12px; color: #666;">Velocity</div>
+            </div>
+            <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <div style="font-size: 24px; font-weight: bold; color: #10ac84;" id="paymentCount">-</div>
+                <div style="font-size: 12px; color: #666;">Payment</div>
+            </div>
+            <div style="padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <div style="font-size: 24px; font-weight: bold; color: #341f97;" id="simpleCount">-</div>
+                <div style="font-size: 12px; color: #666;">Rule Based</div>
+            </div>
+            <div style="padding: 15px; background: #fee; border-radius: 6px; border: 1px solid #fcc;">
+                <div style="font-size: 24px; font-weight: bold; color: #c33;" id="manualCount">-</div>
+                <div style="font-size: 12px; color: #666;">Marked Fraud</div>
+            </div>
+        </div>
+    </div>
+
     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 30px;">
         <!-- Anomaly Heatmap -->
         <div class="glass-card">
-            <h2 style="margin-bottom: 20px;">🗺️ Anomaly Heatmap (Orders by Hour/Day)</h2>
+            <h2 style="margin-bottom: 20px;">🗺️ Order Activity Heatmap (Last 7 Days)</h2>
             <canvas id="heatmapChart" style="max-height: 400px;"></canvas>
+            <div style="margin-top: 15px; display: flex; gap: 20px; justify-content: center; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <span style="width: 20px; height: 20px; background: rgba(95, 39, 205, 0.3); border: 1px solid #5f27cd;"></span>
+                    <span>Low Activity</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <span style="width: 20px; height: 20px; background: rgba(95, 39, 205, 0.6); border: 1px solid #5f27cd;"></span>
+                    <span>Medium</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <span style="width: 20px; height: 20px; background: rgba(95, 39, 205, 0.9); border: 1px solid #5f27cd;"></span>
+                    <span>High Activity</span>
+                </div>
+            </div>
         </div>
-        
         <!-- User Anomalies -->
         <div class="glass-card">
             <h2 style="margin-bottom: 20px;">👤 Suspicious Users</h2>
-            <div id="userAnomalies"></div>
+            <div id="userAnomalies" style="max-height: 400px; overflow-y: auto;"></div>
         </div>
     </div>
     
     <!-- Live Anomaly Feed -->
     <div class="glass-card">
-        <h2 style="margin-bottom: 20px;">📡 Live Anomaly Feed</h2>
-        <div id="anomalyFeed"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>📡 Live Anomaly Feed</h2>
+            <div style="display: flex; gap: 10px;">
+                <span style="padding: 4px 12px; background: #ff6b6b; color: white; border-radius: 12px; font-size: 12px;">Critical</span>
+                <span style="padding: 4px 12px; background: #ff9f43; color: white; border-radius: 12px; font-size: 12px;">High</span>
+                <span style="padding: 4px 12px; background: #feca57; color: #333; border-radius: 12px; font-size: 12px;">Medium</span>
+            </div>
+        </div>
+        <div id="anomalyFeed" style="max-height: 500px; overflow-y: auto;"></div>
     </div>
 </div>
 
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.anomaly-card {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: all 0.3s ease;
+}
+.anomaly-card:hover {
+    transform: translateX(5px);
+}
+.anomaly-card.critical {
+    background: linear-gradient(90deg, #fee 0%, #fff 100%);
+    border-left: 4px solid #c33;
+}
+.anomaly-card.high {
+    background: linear-gradient(90deg, #ffe8d6 0%, #fff 100%);
+    border-left: 4px solid #ff9f43;
+}
+.anomaly-card.medium {
+    background: linear-gradient(90deg, #ffd 0%, #fff 100%);
+    border-left: 4px solid #fc3;
+}
+.anomaly-card.low {
+    background: linear-gradient(90deg, #e8f5e9 0%, #fff 100%);
+    border-left: 4px solid #4caf50;
+}
+.severity-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.severity-badge.critical { background: #ff6b6b; color: white; }
+.severity-badge.high { background: #ff9f43; color: white; }
+.severity-badge.medium { background: #feca57; color: #333; }
+.severity-badge.low { background: #1dd1a1; color: white; }
+.severity-badge.manual { background: #c33; color: white; }
+
+.anomaly-card.manual {
+    background: linear-gradient(90deg, #fcc 0%, #fff 100%);
+    border-left: 4px solid #900;
+}
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+let heatmapChart = null;
+
+function getSeverityClass(severity) {
+    if (severity === 'critical') return 'critical';
+    if (severity === 'high') return 'high';
+    if (severity === 'medium') return 'medium';
+    return 'low';
+}
+
+function getSeverityBadgeClass(severity, type) {
+    if (type === 'manual_fraud') return 'manual';
+    if (severity === 'critical') return 'critical';
+    if (severity === 'high') return 'high';
+    if (severity === 'medium') return 'medium';
+    return 'low';
+}
+
+function getCardClass(severity, type) {
+    if (type === 'manual_fraud') return 'manual';
+    return getSeverityClass(severity);
+}
+
 async function loadAnomalyData() {
     try {
         const response = await fetch('/api/admin/anomaly/detect');
         const data = await response.json();
         
+        // Update timestamp
+        document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+        
         // Update metrics
-        document.getElementById('totalAnomalies').textContent = data.fraud_metrics.detected_anomalies;
-        document.getElementById('fraudRate').textContent = data.fraud_metrics.fraud_rate + '%';
-        document.getElementById('cancellationRate').textContent = data.fraud_metrics.cancellation_rate + '%';
-        document.getElementById('totalOrders').textContent = data.fraud_metrics.total_orders;
+        document.getElementById('totalAnomalies').textContent = data.fraud_metrics.detected_anomalies || 0;
+        document.getElementById('fraudRate').textContent = (data.fraud_metrics.fraud_rate || 0) + '%';
+        document.getElementById('cancellationRate').textContent = (data.fraud_metrics.cancellation_rate || 0) + '%';
+        document.getElementById('totalOrders').textContent = data.fraud_metrics.total_orders || 0;
+        
+        // Update sub-metrics
+        const criticalCount = data.fraud_metrics.anomaly_counts?.critical || 0;
+        const markedFraudCount = data.fraud_metrics.fraud_rates?.marked_fraud_count || 0;
+        let criticalText = '';
+        if (criticalCount > 0) criticalText += `${criticalCount} critical`;
+        if (markedFraudCount > 0) criticalText += (criticalText ? ' + ' : '') + `${markedFraudCount} marked`;
+        document.getElementById('criticalCount').textContent = criticalText;
+        
+        const trend = data.fraud_metrics.fraud_rates?.trend || 'stable';
+        document.getElementById('fraudTrend').textContent = trend === 'increasing' ? '↗ Increasing' : '→ Stable';
+        document.getElementById('fraudTrend').style.color = trend === 'increasing' ? '#ffeb3b' : 'inherit';
+        
+        // Update detection methods
+        const detection = data.detection_summary || {};
+        document.getElementById('mlCount').textContent = detection.ml_based || 0;
+        document.getElementById('statisticalCount').textContent = detection.statistical || 0;
+        document.getElementById('velocityCount').textContent = detection.velocity || 0;
+        document.getElementById('paymentCount').textContent = detection.payment || 0;
+        document.getElementById('simpleCount').textContent = detection.simple_rule || 0;
+        document.getElementById('manualCount').textContent = detection.manual_fraud || 0;
         
         // Display user anomalies
         const userDiv = document.getElementById('userAnomalies');
         if (data.user_anomalies && data.user_anomalies.length > 0) {
             userDiv.innerHTML = data.user_anomalies.map(anomaly => `
                 <div style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; background: #fee;">
-                    <strong>${anomaly.user_email}</strong>
-                    <div style="color: #666; font-size: 14px;">${anomaly.reason}</div>
-                    <div style="color: #666; font-size: 14px;">${anomaly.order_count} orders, ₹${anomaly.total_spent.toFixed(0)}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>${anomaly.user_email || 'Unknown'}</strong>
+                        <span class="severity-badge ${getSeverityBadgeClass(anomaly.risk_score >= 70 ? 'critical' : anomaly.risk_score >= 50 ? 'high' : 'medium')}">
+                            ${anomaly.risk_score || 0} pts
+                        </span>
+                    </div>
+                    <div style="color: #666; font-size: 13px; margin-top: 5px;">${anomaly.reason || 'Suspicious activity'}</div>
+                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
+                        ${anomaly.order_count || 0} orders • ₹${(anomaly.total_spent || 0).toFixed(0)}
+                    </div>
                 </div>
             `).join('');
         } else {
-            userDiv.innerHTML = '<p style="color: #666;">No suspicious users detected</p>';
+            userDiv.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">✅ No suspicious users detected</p>';
         }
         
         // Display anomaly feed
         const feedDiv = document.getElementById('anomalyFeed');
         if (data.anomalies && data.anomalies.length > 0) {
             feedDiv.innerHTML = data.anomalies.map(anomaly => `
-                <div style="padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
-                    ${anomaly.severity === 'high' ? 'background: #fee; border-left: 4px solid #c33;' : 'background: #ffd; border-left: 4px solid #fc3;'}">
-                    <div>
-                        <strong>${anomaly.order_id || 'User Behavior'}</strong>
-                        <div style="color: #666;">${anomaly.reason}</div>
-                        <div style="color: #999; font-size: 12px;">${new Date(anomaly.timestamp).toLocaleString()}</div>
+                <div class="anomaly-card ${getCardClass(anomaly.severity, anomaly.type)}">
+                    <div style="flex: 1;">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px;">
+                            <strong>${anomaly.order_id || anomaly.user_email || 'System Alert'}</strong>
+                            <span class="severity-badge ${getSeverityBadgeClass(anomaly.severity, anomaly.type)}">${anomaly.type === 'manual_fraud' ? 'FRAUD' : anomaly.severity}</span>
+                            <span style="font-size: 11px; color: #999; background: #f5f5f5; padding: 2px 8px; border-radius: 10px;">${anomaly.detection_method || 'Analysis'}</span>
+                        </div>
+                        <div style="color: #555; font-size: 14px; margin-bottom: 3px;">${anomaly.reason || 'Anomaly detected'}</div>
+                        ${anomaly.reasons && anomaly.reasons.length > 1 ? `
+                            <div style="color: #888; font-size: 12px; margin-left: 10px;">
+                                ${anomaly.reasons.slice(1).map(r => `• ${r}`).join('<br>')}
+                            </div>
+                        ` : ''}
+                        <div style="color: #999; font-size: 12px; margin-top: 5px;">
+                            ${anomaly.created_at ? new Date(anomaly.created_at).toLocaleString() : 'Recent'}
+                            ${anomaly.amount ? `• ₹${anomaly.amount.toFixed(0)}` : ''}
+                            ${anomaly.risk_score ? `• Risk: ${anomaly.risk_score}` : ''}
+                        </div>
                     </div>
-                    ${anomaly.order_id_db ? `<button onclick="markFraud(${anomaly.order_id_db})" class="btn" style="padding: 6px 12px; font-size: 14px;">Mark Fraud</button>` : ''}
+                    ${anomaly.order_id_db ? (
+                        anomaly.status === 'Fraud' ? `
+                            <span style="padding: 6px 12px; font-size: 12px; background: #c33; color: white; border-radius: 4px;">
+                                🚫 MARKED FRAUD
+                            </span>
+                        ` : `
+                            <button onclick="markFraud(${anomaly.order_id_db})" class="btn" style="padding: 6px 12px; font-size: 12px; background: #ff6b6b; color: white; border: none; cursor: pointer;">
+                                Mark Fraud
+                            </button>
+                        `
+                    ) : ''}
                 </div>
             `).join('');
         } else {
-            feedDiv.innerHTML = '<p style="color: #666;">No anomalies detected</p>';
+            feedDiv.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">✅ No anomalies detected - all systems normal</p>';
         }
         
-        // Load heatmap
-        loadHeatmap(data.heatmap_data);
+        // Load heatmaps
+        loadHeatmaps(data.heatmap_data);
+        
     } catch (error) {
         console.error('Error loading anomaly data:', error);
+        document.getElementById('anomalyFeed').innerHTML = `<p style="color: #c33; text-align: center; padding: 20px;">⚠️ Error loading data: ${error.message}</p>`;
     }
 }
 
 async function markFraud(orderId) {
-    if (!confirm('Mark this order as fraudulent?')) return;
+    if (!confirm('⚠️ Mark this order as fraudulent?\n\nThis action will:\n• Change order status to "Fraud"\n• Flag the user for review\n• Cannot be undone\n\nAre you sure?')) return;
     
     try {
-        const response = await fetch(`/api/admin/anomaly/${orderId}/mark-fraud`, { method: 'POST' });
-        if (response.ok) {
-            alert('Order marked as fraudulent');
-            loadAnomalyData();
+        const response = await fetch(`/api/admin/anomaly/${orderId}/mark-fraud`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            alert('✅ Order successfully marked as fraudulent\n\nThe order status has been updated and the user has been flagged for review.');
+            loadAnomalyData(); // Refresh to show updated status
+        } else if (response.status === 403) {
+            alert('❌ Access denied: Admin privileges required');
+        } else if (response.status === 404) {
+            alert('❌ Order not found');
+        } else {
+            alert('❌ Error: ' + (result.detail || 'Failed to mark order as fraud'));
         }
     } catch (error) {
-        alert('Error marking fraud');
+        alert('❌ Network error: ' + error.message);
     }
 }
 
-function loadHeatmap(heatmapData) {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+function loadHeatmaps(heatmapData) {
+    if (!heatmapData || !heatmapData.data) return;
     
-    const data = [];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    // Destroy existing chart
+    if (heatmapChart) heatmapChart.destroy();
+    
+    // Prepare data for Chart.js matrix-style visualization
+    const orderData = [];
+    
     for (let day = 0; day < 7; day++) {
         for (let hour = 0; hour < 24; hour++) {
-            const value = heatmapData[day]?.[hour] || 0;
-            data.push({ x: hour, y: day, v: value });
+            const orderCount = heatmapData.data[day]?.[hour] || 0;
+            orderData.push({
+                x: hour,
+                y: day,
+                v: orderCount
+            });
         }
     }
     
+    const maxValue = Math.max(...orderData.map(d => d.v)) || 1;
+    
+    // Single Heatmap - Order Activity
     const ctx = document.getElementById('heatmapChart').getContext('2d');
-    new Chart(ctx, {
+    heatmapChart = new Chart(ctx, {
         type: 'scatter',
         data: {
             datasets: [{
-                label: 'Order Volume',
-                data: data,
-                backgroundColor: data.map(d => `rgba(255, 107, 107, ${Math.min(d.v / 10, 1)})`),
-                pointRadius: 15
+                label: 'Orders',
+                data: orderData.filter(d => d.v > 0),
+                backgroundColor: orderData.filter(d => d.v > 0).map(d => {
+                    const intensity = Math.min(d.v / maxValue, 1);
+                    return `rgba(95, 39, 205, ${0.3 + intensity * 0.7})`;
+                }),
+                pointRadius: orderData.filter(d => d.v > 0).map(d => 8 + Math.min(d.v / maxValue * 12, 12)),
+                pointHoverRadius: 18
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (items) => `${days[items[0].raw.y]} ${items[0].raw.x}:00`,
+                        label: (item) => `${item.raw.v} orders`
+                    }
+                }
+            },
             scales: {
                 x: {
-                    title: { display: true, text: 'Hour' },
-                    ticks: { stepSize: 2 }
+                    type: 'linear',
+                    position: 'bottom',
+                    min: 0,
+                    max: 23,
+                    ticks: {
+                        stepSize: 3,
+                        callback: (v) => `${v}:00`
+                    },
+                    title: { display: true, text: 'Hour of Day' }
                 },
                 y: {
-                    title: { display: true, text: 'Day' },
+                    min: -0.5,
+                    max: 6.5,
                     ticks: {
-                        callback: function(value) { return days[value]; }
-                    }
+                        callback: (v) => days[Math.round(v)] || ''
+                    },
+                    title: { display: true, text: 'Day of Week' }
                 }
             }
         }
@@ -155,5 +396,15 @@ function loadHeatmap(heatmapData) {
 
 // Load data on page load
 loadAnomalyData();
+
+// Realtime auto-refresh every 15 seconds for more real-time feel
+setInterval(loadAnomalyData, 15000);
+
+// Also refresh when tab becomes visible again
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        loadAnomalyData();
+    }
+});
 </script>
 {% endblock %}

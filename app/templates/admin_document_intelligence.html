@@ -147,8 +147,12 @@ async function loadDocuments() {
                               d.status === 'error' ? 'background: #fee; color: #c33;' : 
                               'background: #ffd; color: #960;'}">${d.status}</span>
                     </div>
-                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                        ${new Date(d.created_at).toLocaleString()} | ${(d.file_size / 1024).toFixed(1)} KB
+                    <div style="color: #999; font-size: 12px; margin-top: 5px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>${new Date(d.created_at).toLocaleString()} | ${(d.file_size / 1024).toFixed(1)} KB</span>
+                        <button onclick="event.stopPropagation(); downloadDocument('${d.document_id}', '${d.filename}')" 
+                                style="padding: 4px 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            ⬇ Download
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -196,7 +200,10 @@ async function viewDocument(docId) {
                 </div>
             ` : ''}
             
-            <button onclick="deleteDocument('${docId}')" class="btn" style="background: #ff6b6b; width: 100%; margin-top: 20px;">Delete Document</button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+                <button onclick="downloadDocument('${docId}', '${doc.filename}')" class="btn" style="background: #2196F3;">⬇ Download</button>
+                <button onclick="deleteDocument('${docId}')" class="btn" style="background: #ff6b6b;">🗑 Delete</button>
+            </div>
         `;
     } catch (error) {
         document.getElementById('documentPreview').innerHTML = `<p style="color: #c33;">Error loading document</p>`;
@@ -241,6 +248,17 @@ async function showFullMatches(docId, query) {
     }
 }
 
+function downloadDocument(docId, filename) {
+    // Create a temporary anchor element to trigger download
+    const link = document.createElement('a');
+    link.href = `/api/admin/documents/${docId}/download`;
+    link.download = filename || 'document';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 async function deleteDocument(docId) {
     if (!confirm('Delete this document?')) return;
     
@@ -255,71 +273,282 @@ async function deleteDocument(docId) {
     }
 }
 
-async function searchDocuments() {
-    const query = document.getElementById('searchQuery').value;
+async function searchDocuments(showAll = false) {
+    const query = document.getElementById('searchQuery').value.trim();
     const docType = document.getElementById('searchDocType').value;
-    
+
     if (!query) {
         alert('Please enter a search query');
         return;
     }
-    
+
     const resultsDiv = document.getElementById('searchResults');
-    resultsDiv.innerHTML = '<p style="color: #666;">Searching...</p>';
-    
+    if (!showAll) {
+        resultsDiv.innerHTML = '<p style="color: #666;">Searching through documents with AI...</p>';
+    }
+
     try {
-        const url = `/api/admin/documents/search?query=${encodeURIComponent(query)}${docType ? '&document_type=' + docType : ''}`;
+        const url = `/api/admin/documents/search?query=${encodeURIComponent(query)}${docType ? '&document_type=' + docType : ''}&show_all=${showAll}`;
         const response = await fetch(url);
         const data = await response.json();
-        
+
         if (data.results && data.results.length > 0) {
+            // Clear and build results using DOM methods
+            resultsDiv.innerHTML = '';
+
+            // Add header
+            const header = document.createElement('h3');
+            header.style.marginBottom = '15px';
+            header.innerHTML = `🔍 Found ${data.results.length} document(s) with "<mark style="background: #ffeb3b; color: #000; padding: 2px 4px; border-radius: 3px; font-weight: bold;">${query}</mark>"`;
+            resultsDiv.appendChild(header);
+
+            // AI Summary Section
+            const totalMatches = data.results.reduce((sum, r) => sum + (r.total_matches || 0), 0);
+            const aiSummaryDiv = document.createElement('div');
+            aiSummaryDiv.id = 'aiSummarySection';
+            aiSummaryDiv.style.cssText = 'margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;';
+            aiSummaryDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <span style="font-size: 24px;">🤖</span>
+                    <strong style="font-size: 16px;">AI Document Analysis</strong>
+                </div>
+                <div id="aiSummaryContent" style="font-size: 14px; line-height: 1.6;">
+                    <p>Analyzing ${data.results.length} documents with ${totalMatches} matches for "${query}"...</p>
+                </div>
+                <div id="aiSummaryInsights" style="margin-top: 10px; font-size: 13px; opacity: 0.9;"></div>
+            `;
+            resultsDiv.appendChild(aiSummaryDiv);
+
+            // Trigger AI summary generation
+            generateAISummary(query, data.results);
+
+            const grid = document.createElement('div');
+            grid.style.display = 'grid';
+            grid.style.gap = '15px';
+
+            data.results.forEach(r => {
+                const docCard = document.createElement('div');
+                docCard.style.cssText = 'padding: 15px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background: #fff;';
+                docCard.onclick = () => viewDocument(r.document_id);
+
+                // Header section
+                const headerDiv = document.createElement('div');
+                headerDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: start;';
+
+                const infoDiv = document.createElement('div');
+                infoDiv.style.flex = '1';
+
+                const titleRow = document.createElement('div');
+                titleRow.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 5px;';
+
+                const title = document.createElement('strong');
+                title.style.fontSize = '16px';
+                title.textContent = r.filename;
+
+                const typeLabel = document.createElement('span');
+                typeLabel.style.cssText = 'padding: 2px 8px; background: #e0e0e0; border-radius: 4px; font-size: 11px; text-transform: uppercase;';
+                typeLabel.textContent = r.document_type;
+
+                titleRow.appendChild(title);
+                titleRow.appendChild(typeLabel);
+
+                const fileType = document.createElement('div');
+                fileType.style.cssText = 'color: #666; font-size: 13px; margin-bottom: 5px;';
+                fileType.textContent = `File: ${r.file_type || 'unknown'}`;
+
+                infoDiv.appendChild(titleRow);
+                infoDiv.appendChild(fileType);
+
+                if (r.upload_date) {
+                    const uploadDate = document.createElement('div');
+                    uploadDate.style.cssText = 'color: #999; font-size: 12px;';
+                    uploadDate.textContent = `Uploaded: ${new Date(r.upload_date).toLocaleString()}`;
+                    infoDiv.appendChild(uploadDate);
+                }
+
+                const matchBadge = document.createElement('div');
+                matchBadge.style.cssText = 'text-align: right; margin-left: 15px;';
+                const totalMatches = r.total_matches || r.match_count || 0;
+                matchBadge.innerHTML = `<span style="padding: 4px 12px; background: ${totalMatches > 0 ? '#4caf50' : '#ff9800'}; color: white; border-radius: 12px; font-size: 12px; font-weight: bold;">${totalMatches} match${totalMatches !== 1 ? 'es' : ''}</span>`;
+
+                headerDiv.appendChild(infoDiv);
+                headerDiv.appendChild(matchBadge);
+                docCard.appendChild(headerDiv);
+
+                // AI Insights section
+                if (r.ai_insights && (r.ai_insights.query_entities?.length > 0 || r.ai_insights.related_concepts?.length > 0)) {
+                    const insightsDiv = document.createElement('div');
+                    insightsDiv.style.cssText = 'margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 6px; border-left: 3px solid #2196F3;';
+                    
+                    const insightsTitle = document.createElement('div');
+                    insightsTitle.style.cssText = 'font-weight: 600; font-size: 12px; color: #1976d2; margin-bottom: 6px;';
+                    insightsTitle.textContent = '🤖 AI Analysis:';
+                    insightsDiv.appendChild(insightsTitle);
+
+                    if (r.ai_insights.query_entities?.length > 0) {
+                        const entitiesDiv = document.createElement('div');
+                        entitiesDiv.style.cssText = 'font-size: 12px; color: #333; margin-bottom: 4px;';
+                        entitiesDiv.innerHTML = `<strong>Entities:</strong> ${r.ai_insights.query_entities.map(e => e.text).join(', ')}`;
+                        insightsDiv.appendChild(entitiesDiv);
+                    }
+
+                    if (r.ai_insights.related_concepts?.length > 0) {
+                        const conceptsDiv = document.createElement('div');
+                        conceptsDiv.style.cssText = 'font-size: 12px; color: #333;';
+                        conceptsDiv.innerHTML = `<strong>Related:</strong> ${r.ai_insights.related_concepts.join(', ')}`;
+                        insightsDiv.appendChild(conceptsDiv);
+                    }
+
+                    docCard.appendChild(insightsDiv);
+                }
+
+                // Matches section
+                const matchesToShow = r.all_matches || r.initial_matches || [];
+                if (matchesToShow.length > 0) {
+                    const matchesDiv = document.createElement('div');
+                    matchesDiv.style.cssText = 'margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;';
+
+                    const matchesTitle = document.createElement('div');
+                    matchesTitle.style.cssText = 'font-weight: 600; margin-bottom: 10px; color: #333; font-size: 14px;';
+                    matchesTitle.textContent = '📄 Matching Content (AI Highlighted in Yellow):';
+                    matchesDiv.appendChild(matchesTitle);
+
+                    const matchesGrid = document.createElement('div');
+                    matchesGrid.style.cssText = 'display: grid; gap: 10px;';
+
+                    const docId = r.document_id;
+                    const hasMoreMatches = totalMatches > 5 && !showAll;
+
+                    // Show matches (5 initially or all if showAll is true)
+                    matchesToShow.forEach((match, idx) => {
+                        const matchDiv = createMatchElement(match, idx + 1, query);
+                        matchesGrid.appendChild(matchDiv);
+                    });
+
+                    // Show All button if there are more matches and not already showing all
+                    if (hasMoreMatches) {
+                        const btnDiv = document.createElement('div');
+                        btnDiv.style.cssText = 'margin-top: 10px; text-align: center;';
+                        btnDiv.innerHTML = `<button id="btn-show-${docId}" onclick="event.stopPropagation(); loadAllMatches('${docId}', '${encodeURIComponent(query)}')" style="padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Show All ${totalMatches} Matches</button>`;
+                        matchesDiv.appendChild(btnDiv);
+                    }
+
+                    matchesDiv.appendChild(matchesGrid);
+                    docCard.appendChild(matchesDiv);
+                }
+
+                grid.appendChild(docCard);
+            });
+
+            resultsDiv.appendChild(grid);
+        } else {
             resultsDiv.innerHTML = `
-                <h3 style="margin-bottom: 15px;">${data.results.length} Documents Found</h3>
-                <div style="display: grid; gap: 15px;">
-                    ${data.results.map(r => `
-                        <div style="padding: 15px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background: #fff;" onclick="viewDocument('${r.document_id}')">
-                            <div style="display: flex; justify-content: space-between; align-items: start;">
-                                <div style="flex: 1;">
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
-                                        <strong>${r.filename}</strong>
-                                    </div>
-                                    <div style="color: #666; font-size: 14px; margin-bottom: 5px;">Type: ${r.document_type} | File: ${r.file_type || 'unknown'}</div>
-                                    ${r.upload_date ? `<div style="color: #999; font-size: 12px; margin-bottom: 5px;">Uploaded: ${new Date(r.upload_date).toLocaleString()}</div>` : ''}
-                                    ${r.match_count ? `<div style="color: #666; font-size: 12px; margin-bottom: 5px;"><strong>${r.match_count}</strong> matches found</div>` : ''}
-                                </div>
-                                <div style="text-align: right; margin-left: 15px;">
-                                    <span style="padding: 4px 8px; background: #e3f2fd; color: #1976d2; border-radius: 4px; font-size: 12px;">Score: ${r.score ? (r.score * 100).toFixed(1) + '%' : 'N/A'}</span>
-                                </div>
-                            </div>
-                            
-                            ${r.all_matches && r.all_matches.length > 0 ? `
-                                <div style="margin-top: 15px;">
-                                    <div style="font-weight: 500; margin-bottom: 8px; color: #333;">All Matches:</div>
-                                    ${r.all_matches.slice(0, 5).map((match, idx) => `
-                                        <div style="padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 13px; line-height: 1.5; margin-bottom: 8px; border-left: 3px solid #2196F3;">
-                                            <div style="color: #999; font-size: 11px; margin-bottom: 4px;">Match #${idx + 1} at position ${match.position}</div>
-                                            ...${match.snippet}...
-                                        </div>
-                                    `).join('')}
-                                    ${r.all_matches.length > 5 ? `<div style="color: #666; font-size: 12px; margin-top: 5px;">+ ${r.all_matches.length - 5} more matches</div>` : ''}
-                                    ${r.all_matches.length > 5 ? `<button onclick="event.stopPropagation(); showFullMatches('${r.document_id}', '${encodeURIComponent(query)}')" style="margin-top: 10px; padding: 8px 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">View All ${r.all_matches.length} Matches</button>` : ''}
-                                </div>
-                            ` : r.content_snippet ? `
-                                <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 13px; line-height: 1.5;">
-                                    <strong>Match:</strong> ${r.content_snippet}
-                                </div>
-                            ` : ''}
-                            
-                            <div style="margin-top: 5px; color: #999; font-size: 11px;">Source: ${r.source}</div>
-                        </div>
-                    `).join('')}
+                <div style="padding: 30px; text-align: center; background: #f9f9f9; border-radius: 8px;">
+                    <p style="color: #666; font-size: 16px; margin-bottom: 10px;">No documents found containing "${query}"</p>
+                    <p style="color: #999; font-size: 13px;">Try different keywords or check if documents have been processed (OCR completed)</p>
                 </div>
             `;
-        } else {
-            resultsDiv.innerHTML = '<p style="color: #666;">No results found</p>';
         }
     } catch (error) {
-        resultsDiv.innerHTML = `<p style="color: #c33;">Error searching</p>`;
+        resultsDiv.innerHTML = `<p style="color: #c33;">Error searching: ${error.message}</p>`;
+    }
+}
+
+// Generate AI Summary for search results
+async function generateAISummary(query, searchResults) {
+    try {
+        const response = await fetch('/api/admin/documents/ai-summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, search_results: searchResults })
+        });
+        
+        const data = await response.json();
+        
+        const contentDiv = document.getElementById('aiSummaryContent');
+        const insightsDiv = document.getElementById('aiSummaryInsights');
+        
+        if (data.summary && contentDiv) {
+            contentDiv.innerHTML = `<p>${data.summary}</p>`;
+        }
+        
+        if (data.insights && insightsDiv && data.insights.length > 0) {
+            insightsDiv.innerHTML = `
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
+                    <strong>Key Insights:</strong>
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                        ${data.insights.map(i => `<li>${i}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('AI Summary generation failed:', error);
+        const contentDiv = document.getElementById('aiSummaryContent');
+        if (contentDiv) {
+            contentDiv.innerHTML = `<p>AI analysis complete. Found ${searchResults.length} relevant documents.</p>`;
+        }
+    }
+}
+
+// Load all matches for a specific document
+async function loadAllMatches(docId, encodedQuery) {
+    const query = decodeURIComponent(encodedQuery);
+    const btn = document.getElementById(`btn-show-${docId}`);
+    if (btn) {
+        btn.textContent = 'Loading all matches...';
+        btn.disabled = true;
+    }
+
+    // Re-run search with show_all=true
+    await searchDocuments(true);
+}
+
+function createMatchElement(match, matchNum, query) {
+    const matchDiv = document.createElement('div');
+    matchDiv.style.cssText = 'padding: 12px; background: #f5f5f5; border-radius: 6px; font-size: 13px; line-height: 1.6; border-left: 4px solid #2196F3;';
+
+    const matchLabel = document.createElement('div');
+    matchLabel.style.cssText = 'color: #666; font-size: 11px; margin-bottom: 6px; font-weight: 500;';
+    matchLabel.innerHTML = `Match #${matchNum} <span style="color: #999;">(${match.match_type || 'text'})</span>`;
+
+    const snippetDiv = document.createElement('div');
+    snippetDiv.style.cssText = 'color: #333; font-style: italic;';
+
+    // Use highlighted version from Azure if available, otherwise highlight locally
+    let displaySnippet;
+    if (match.highlighted) {
+        // Azure already highlighted it - just update the style
+        displaySnippet = match.highlighted.replace(/<mark>/g, '<mark style="background: #ffeb3b; padding: 2px 4px; border-radius: 3px; font-weight: bold; color: #000;">');
+    } else {
+        // Local search - highlight manually
+        displaySnippet = highlightText(match.snippet, query);
+    }
+    snippetDiv.innerHTML = `"...${displaySnippet}..."`;
+
+    matchDiv.appendChild(matchLabel);
+    matchDiv.appendChild(snippetDiv);
+
+    return matchDiv;
+}
+
+function highlightText(text, query) {
+    if (!text || !query) return text;
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    return text.replace(regex, '<mark style="background: #ffeb3b; padding: 2px 4px; border-radius: 3px; font-weight: bold; color: #000;">$1</mark>');
+}
+
+function toggleMatches(docId, count) {
+    const hiddenDiv = document.getElementById(`hidden-matches-${docId}`);
+    const btn = document.getElementById(`btn-show-${docId}`);
+
+    if (hiddenDiv.style.display === 'none') {
+        hiddenDiv.style.display = 'grid';
+        btn.textContent = `Hide ${count} Matches`;
+    } else {
+        hiddenDiv.style.display = 'none';
+        btn.textContent = `Show All ${count + 3} Matches`;
     }
 }
 

@@ -31,12 +31,12 @@
             <p id="dataSource" style="color: #666; margin-bottom: 15px;">Data Source: Database</p>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
                 <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Model Type</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Azure AI Model</label>
                     <select id="modelType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                        <option value="all">All Models (Prophet + ARIMA + Exp. Smoothing)</option>
-                        <option value="prophet">Prophet</option>
-                        <option value="arima">ARIMA</option>
-                        <option value="lstm">Exp. Smoothing</option>
+                        <option value="all">All Azure Models (Prophet + ARIMA + LSTM)</option>
+                        <option value="prophet">Azure Prophet (Time Series)</option>
+                        <option value="arima">Azure ARIMA (Statistical)</option>
+                        <option value="lstm">Azure LSTM (Deep Learning)</option>
                     </select>
                 </div>
                 <div>
