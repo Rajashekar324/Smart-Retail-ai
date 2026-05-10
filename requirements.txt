@@ -7,7 +7,7 @@ passlib==1.7.4
 pydantic==2.9.2
 pydantic-settings==2.5.2
 python-dotenv==1.0.1
-chromadb==0.5.5
+chromadb==0.5.3
 pymongo==4.8.0
 langgraph==0.2.53
 networkx==3.3
